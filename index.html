@@ -296,7 +296,8 @@ async function load() {
             const anioArchivo = String(val(row, ['AÑOS', 'ANOS', 'AÑO', 'ANIO', 'Anio'])).trim();
             return {
                 venta: cleanNum(val(row, ['FAC TOTAL', 'FACT TOTAL', 'TOTAL', 'VENTA', 'IMPORTE'])),
-                pacienteId: String(val(row, ['DNI', 'Paciente', 'PACIENTE', 'NUM HIST'])).trim(),
+                pacienteId: String(val(row, ['DNI', 'NUM HIST'])).trim(),
+                pacienteNombre: String(val(row, ['Paciente', 'PACIENTE'])).trim(),
                 cc: (String(val(row, ['CENTRO COSTO', 'CENTRO DE COSTO', 'CC'])).trim() || 'OTROS').toUpperCase(),
                 // Usa primero la columna ASEGURADORA; si no existe, usa DES PLAN como respaldo.
                 aseguradora: (String(val(row, ['ASEGURADORA', 'DES PLAN', 'CONTRATANTE', 'TIPO PAGO'])).trim() || 'PARTICULAR').toUpperCase(),
@@ -473,7 +474,12 @@ function renderAsignadora(fil) {
         const k = nombresCortos[d.aseguradora] || d.aseguradora || 'PARTICULAR';
         venta[k] = (venta[k] || 0) + d.venta;
         if (!pac[k]) pac[k] = new Set();
-        if (d.pacienteId) pac[k].add(d.pacienteId);
+        const nombrePaciente = (d.pacienteNombre || '')
+            .toUpperCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (nombrePaciente) pac[k].add(nombrePaciente);
     });
     const labels = topLabelsByValue(venta, 10);
     createBar('chAsigV', labels, labels.map(l => venta[l] || 0), true, 22, palette);
@@ -483,4 +489,3 @@ load();
 </script>
 </body>
 </html>
-

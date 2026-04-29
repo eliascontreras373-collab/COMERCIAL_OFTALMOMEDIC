@@ -14,8 +14,19 @@
         .header { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 15px; background: var(--white); padding: 20px; border-radius: 12px; border-left: 10px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }
         .logo h1 { font-size: 28px; color: var(--primary); font-weight: 900; letter-spacing: -1px; }
         .logo p { color:#64748b; font-weight:700; margin-top:4px; }
-        .filters { display: flex; gap: 12px; flex-wrap: wrap; }
-        select { padding: 10px 15px; border-radius: 8px; border: 2px solid #cbd5e1; font-weight: 800; color: var(--primary); outline: none; cursor: pointer; background:white; }
+        .filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+        .filter-box { display:flex; flex-direction:column; gap:4px; }
+        .filter-box label { font-size: 10px; font-weight: 900; color:#64748b; text-transform: uppercase; }
+        select { padding: 10px 15px; border-radius: 8px; border: 2px solid #cbd5e1; font-weight: 800; color: var(--primary); outline: none; cursor: pointer; background:white; min-width: 120px; }
+
+        .multi-dropdown { position: relative; min-width: 165px; }
+        .multi-btn { width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid #cbd5e1; background: white; color: var(--primary); font-weight: 900; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .multi-panel { display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 9999; width: 230px; max-height: 300px; overflow-y: auto; background: white; border: 2px solid #cbd5e1; border-radius: 10px; box-shadow: 0 14px 28px rgba(15,23,42,0.18); padding: 8px; }
+        .multi-dropdown.open .multi-panel { display: block; }
+        .check-row { display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-radius: 8px; font-size: 13px; font-weight: 800; color: #0f172a; cursor: pointer; }
+        .check-row:hover { background: #f1f5f9; }
+        .check-row input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+        .all-row { color: var(--primary); border-bottom: 1px solid #e2e8f0; margin-bottom: 4px; }
         .alert { display:none; background:#fee2e2; color:#7f1d1d; border:1px solid #fecaca; padding:14px 16px; border-radius:10px; margin-bottom:12px; font-weight:700; white-space:pre-wrap; }
         .info { background:#ecfdf5; color:#064e3b; border:1px solid #bbf7d0; padding:10px 14px; border-radius:10px; margin-bottom:12px; font-weight:700; }
         .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px; }
@@ -40,10 +51,27 @@
     <div class="header">
         <div class="logo"><h1>OFTALMOMEDIC</h1><p>Reporte Comercial</p></div>
         <div class="filters">
-            <select id="fSede"><option value="TODOS">SEDE (TODAS)</option></select>
-            <select id="fAnio"><option value="TODOS">AÑO</option></select>
-            <select id="fMes"><option value="TODOS">MES (TODOS)</option></select>
-            <select id="fDia"><option value="TODOS">DÍA (TODOS)</option></select>
+            <div class="filter-box"><label>Sede</label><select id="fSede"><option value="TODOS">SEDE (TODAS)</option></select></div>
+            <div class="filter-box"><label>Año</label><select id="fAnio"><option value="TODOS">AÑO</option></select></div>
+            <div class="filter-box"><label>Mes</label><select id="fMes"><option value="TODOS">MES (TODOS)</option></select></div>
+            <div class="filter-box"><label>Semana</label>
+                <div class="multi-dropdown" id="ddSemana">
+                    <button type="button" class="multi-btn" onclick="toggleDropdown('ddSemana')"><span id="lblSemana">SEMANA (TODAS)</span><span>▾</span></button>
+                    <div class="multi-panel">
+                        <label class="check-row all-row"><input type="checkbox" id="chkSemanaTodos" checked onchange="toggleAllCheckboxes('semana', this.checked)"> Todas las semanas</label>
+                        <div id="boxSemana"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-box"><label>Día</label>
+                <div class="multi-dropdown" id="ddDia">
+                    <button type="button" class="multi-btn" onclick="toggleDropdown('ddDia')"><span id="lblDia">DÍA (TODOS)</span><span>▾</span></button>
+                    <div class="multi-panel">
+                        <label class="check-row all-row"><input type="checkbox" id="chkDiaTodos" checked onchange="toggleAllCheckboxes('dia', this.checked)"> Todos los días</label>
+                        <div id="boxDia"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -55,7 +83,7 @@
         <div class="kpi-card"><span>DÍAS TRABAJADOS</span><div id="k2">0</div></div>
         <div class="kpi-card"><span>PACIENTES ÚNICOS</span><div id="k3">0</div></div>
         <div class="kpi-card"><span>TICKET PROMEDIO</span><div id="k4">S/ 0</div></div>
-        <div class="kpi-card" style="border-bottom: 4px solid var(--accent);"><span>META DEL MES</span><div id="k5">S/ 0</div></div>
+        <div class="kpi-card" style="border-bottom: 4px solid var(--accent);"><span>META ACUMULADA</span><div id="k5">S/ 0</div></div>
     </div>
 
     <div class="reach-grid">
@@ -73,7 +101,7 @@
         <div class="chart-card"><div class="sub-wrapper"><canvas id="chCCV"></canvas></div></div>
         <div class="chart-card"><div class="sub-wrapper"><canvas id="chCCP"></canvas></div></div>
     </div>
-    <div class="section-title">Análisis por Aseguradora / Plan</div>
+    <div class="section-title">Análisis por Aseguradora</div>
     <div class="charts-grid">
         <div class="chart-card"><div class="sub-wrapper"><canvas id="chAsigV"></canvas></div></div>
         <div class="chart-card"><div class="sub-wrapper"><canvas id="chAsigP"></canvas></div></div>
@@ -97,12 +125,10 @@ const showInfo = (txt) => {
     i.style.display = txt ? 'block' : 'none';
     i.innerText = txt || '';
 };
-
 function cleanNum(val) {
     if (val === null || val === undefined) return 0;
     let str = String(val).replace(/S\//g, '').replace(/\s/g, '').trim();
     if (!str) return 0;
-    // Soporta 1,234.56 y 1.234,56
     if (str.includes(',') && str.includes('.')) {
         if (str.lastIndexOf(',') > str.lastIndexOf('.')) str = str.replace(/\./g, '').replace(',', '.');
         else str = str.replace(/,/g, '');
@@ -133,7 +159,6 @@ function normFecha(f) {
     s = s.replace(/-/g, '/');
     let p = s.split('/');
     if (p.length !== 3) return s;
-    // Si viene YYYY/MM/DD
     if (p[0].length === 4) return `${p[2].padStart(2,'0')}/${p[1].padStart(2,'0')}/${p[0]}`;
     return `${p[0].padStart(2,'0')}/${p[1].padStart(2,'0')}/${p[2]}`;
 }
@@ -193,6 +218,71 @@ async function fetchTextSmart(url) {
     try { return new TextDecoder('utf-8', {fatal:true}).decode(buf); }
     catch(e) { return new TextDecoder('windows-1252').decode(buf); }
 }
+function fillSelect(id, vals) {
+    const s = document.getElementById(id);
+    const label = id === 'fSede' ? 'SEDE (TODAS)' : id === 'fAnio' ? 'AÑO' : id === 'fMes' ? 'MES (TODOS)' : 'TODOS';
+    s.innerHTML = `<option value="TODOS">${label}</option>`;
+    [...new Set(vals)].filter(v => v !== null && v !== undefined && String(v).trim() !== '').sort((a,b) => String(a).localeCompare(String(b), 'es', {numeric:true})).forEach(v => {
+        s.innerHTML += `<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`;
+    });
+}
+function escapeHtml(txt) {
+    return String(txt).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+function fillCheckboxDropdown(tipo, vals, labelAll) {
+    const box = document.getElementById(tipo === 'semana' ? 'boxSemana' : 'boxDia');
+    const todos = document.getElementById(tipo === 'semana' ? 'chkSemanaTodos' : 'chkDiaTodos');
+    box.innerHTML = '';
+    todos.checked = true;
+    const cleanVals = [...new Set(vals)]
+        .filter(v => v !== null && v !== undefined && String(v).trim() !== '')
+        .sort((a,b) => String(a).localeCompare(String(b), 'es', {numeric:true}));
+    cleanVals.forEach(v => {
+        const safe = escapeHtml(v);
+        box.innerHTML += `<label class="check-row"><input type="checkbox" class="chk-${tipo}" value="${safe}" onchange="onOptionCheck('${tipo}')"> ${safe}</label>`;
+    });
+    updateDropdownLabel(tipo, labelAll);
+}
+function toggleDropdown(id) {
+    document.querySelectorAll('.multi-dropdown').forEach(d => { if (d.id !== id) d.classList.remove('open'); });
+    document.getElementById(id).classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.multi-dropdown')) document.querySelectorAll('.multi-dropdown').forEach(d => d.classList.remove('open'));
+});
+function toggleAllCheckboxes(tipo, checked) {
+    document.querySelectorAll(`.chk-${tipo}`).forEach(chk => chk.checked = false);
+    updateDropdownLabel(tipo);
+    update();
+}
+function onOptionCheck(tipo) {
+    const checked = getCheckedValues(tipo);
+    const todos = document.getElementById(tipo === 'semana' ? 'chkSemanaTodos' : 'chkDiaTodos');
+    todos.checked = checked.length === 0;
+    updateDropdownLabel(tipo);
+    update();
+}
+function getCheckedValues(tipo) {
+    return [...document.querySelectorAll(`.chk-${tipo}:checked`)].map(chk => chk.value);
+}
+function updateDropdownLabel(tipo, defaultLabel) {
+    const vals = getCheckedValues(tipo);
+    const lbl = document.getElementById(tipo === 'semana' ? 'lblSemana' : 'lblDia');
+    const base = defaultLabel || (tipo === 'semana' ? 'SEMANA (TODAS)' : 'DÍA (TODOS)');
+    if (vals.length === 0) lbl.innerText = base;
+    else if (vals.length === 1) lbl.innerText = vals[0];
+    else lbl.innerText = `${vals.length} seleccionados`;
+}
+function maxFechaVentas(ventas) {
+    const fechas = ventas.map(v => v.fecha).filter(Boolean).sort((a,b) => compareFechaNum(a).localeCompare(compareFechaNum(b)));
+    return fechas.length ? fechas[fechas.length - 1] : '';
+}
+function metasHastaUltimaVenta(metas, ventas) {
+    const ultima = maxFechaVentas(ventas);
+    if (!ultima) return [];
+    const ultimaNum = compareFechaNum(ultima);
+    return metas.filter(m => compareFechaNum(m.fecha) <= ultimaNum);
+}
 
 async function load() {
     try {
@@ -208,10 +298,13 @@ async function load() {
                 venta: cleanNum(val(row, ['FAC TOTAL', 'FACT TOTAL', 'TOTAL', 'VENTA', 'IMPORTE'])),
                 pacienteId: String(val(row, ['DNI', 'Paciente', 'PACIENTE', 'NUM HIST'])).trim(),
                 cc: (String(val(row, ['CENTRO COSTO', 'CENTRO DE COSTO', 'CC'])).trim() || 'OTROS').toUpperCase(),
-                aseguradora: (String(val(row, ['DES PLAN', 'ASEGURADORA', 'CONTRATANTE', 'TIPO PAGO'])).trim() || 'PARTICULAR').toUpperCase(),
+                // Usa primero la columna ASEGURADORA; si no existe, usa DES PLAN como respaldo.
+                aseguradora: (String(val(row, ['ASEGURADORA', 'DES PLAN', 'CONTRATANTE', 'TIPO PAGO'])).trim() || 'PARTICULAR').toUpperCase(),
                 sedeXX: (String(val(row, ['SedeXX', 'SEDEXX', 'SEDE'])).trim() || 'SIN SEDE').toUpperCase(),
                 mes: mesArchivo || mesDesdeFecha(fecha),
                 anio: anioArchivo || anioDesdeFecha(fecha),
+                semana: String(val(row, ['SEMANA', 'Semana'])).trim(),
+                dia: fecha ? fecha.substring(0, 2) : '',
                 fecha
             };
         }).filter(d => d.fecha && d.venta !== 0);
@@ -232,7 +325,7 @@ async function load() {
         }).filter(d => d.fecha);
 
         if (!rawData.length) {
-            showError('El archivo ventas.csv cargó, pero no se encontraron ventas válidas. Revisa que existan estas columnas: FECHA, FAC TOTAL, DNI/Paciente, CENTRO COSTO, SedeXX, MES y AÑOS.');
+            showError('El archivo ventas.csv cargó, pero no se encontraron ventas válidas. Revisa columnas: FECHA, FAC TOTAL, DNI/Paciente, CENTRO COSTO, SedeXX, MES, AÑOS, ASEGURADORA y SEMANA.');
         }
         if (!metasDiarias.length) {
             showError('El archivo metas.csv cargó, pero no se encontraron metas válidas. Revisa columnas: Fecha, Meta, CENTRO, NORTE.');
@@ -241,7 +334,9 @@ async function load() {
         fillSelect('fSede', rawData.map(d => d.sedeXX));
         fillSelect('fAnio', rawData.map(d => d.anio));
         fillSelect('fMes', rawData.map(d => d.mes));
-        fillSelect('fDia', rawData.map(d => d.fecha ? d.fecha.substring(0, 2) : ''));
+        fillCheckboxDropdown('semana', rawData.map(d => d.semana), 'SEMANA (TODAS)');
+        fillCheckboxDropdown('dia', rawData.map(d => d.dia), 'DÍA (TODOS)');
+
         document.querySelectorAll('select').forEach(s => s.onchange = update);
         showInfo(`Datos cargados: ${rawData.length.toLocaleString('es-PE')} registros de ventas y ${metasDiarias.length.toLocaleString('es-PE')} días de metas.`);
         update();
@@ -251,35 +346,35 @@ async function load() {
         showError('ERROR AL CARGAR DATOS:\n' + e.message + '\n\nVerifica que index.html, ventas.csv y metas.csv estén en la misma carpeta y con nombres exactos en minúscula.');
     }
 }
-function fillSelect(id, vals) {
-    const s = document.getElementById(id);
-    const label = id === 'fSede' ? 'SEDE (TODAS)' : id === 'fAnio' ? 'AÑO' : id === 'fMes' ? 'MES (TODOS)' : 'DÍA (TODOS)';
-    s.innerHTML = `<option value="TODOS">${label}</option>`;
-    [...new Set(vals)].filter(v => v).sort((a,b) => String(a).localeCompare(String(b), 'es', {numeric:true})).forEach(v => {
-        s.innerHTML += `<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`;
-    });
-}
 function update() {
     const s = document.getElementById('fSede').value;
     const a = document.getElementById('fAnio').value;
     const m = document.getElementById('fMes').value;
-    const dia = document.getElementById('fDia').value;
+    const semanasSel = getCheckedValues('semana');
+    const diasSel = getCheckedValues('dia');
+
     const filV = rawData.filter(d =>
         (s === 'TODOS' || d.sedeXX === s || d.sedeXX.includes(s)) &&
         (a === 'TODOS' || d.anio === a) &&
         (m === 'TODOS' || d.mes === m) &&
-        (dia === 'TODOS' || d.fecha.substring(0, 2) === dia)
+        (semanasSel.length === 0 || semanasSel.includes(d.semana)) &&
+        (diasSel.length === 0 || diasSel.includes(d.dia))
     );
+
     const mNum = MESES[String(m).toUpperCase()] || '';
-    const filM = metasDiarias.filter(d =>
+    let filM = metasDiarias.filter(d =>
         (a === 'TODOS' || d.anio === a) &&
         (m === 'TODOS' || d.mesNum === mNum) &&
-        (dia === 'TODOS' || d.fecha.substring(0, 2) === dia)
+        (diasSel.length === 0 || diasSel.includes(d.fecha.substring(0, 2)))
     ).sort((x,y) => compareFechaNum(x.fecha).localeCompare(compareFechaNum(y.fecha)));
+
+    // Para gráficos y meta acumulada: solo hasta el último día que existe en ventas filtradas.
+    const filMHastaVenta = metasHastaUltimaVenta(filM, filV);
 
     const tot = filV.reduce((acc, d) => acc + d.venta, 0);
     const metaCampo = (s === 'CENTRO') ? 'metaCentro' : (s === 'NORTE') ? 'metaNorte' : 'metaGlobal';
-    const metaTot = filM.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
+    const metaAcumulada = filMHastaVenta.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
+    const metaMesCompleto = filM.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const diasOp = [...new Set(filV.map(d => d.fecha))].length;
     const pacUnicos = [...new Set(filV.map(d => d.pacienteId).filter(Boolean))].length;
 
@@ -287,17 +382,13 @@ function update() {
     document.getElementById('k2').innerText = diasOp;
     document.getElementById('k3').innerText = pacUnicos;
     document.getElementById('k4').innerText = money(tot / (pacUnicos || 1));
-    document.getElementById('k5').innerText = money(metaTot);
+    document.getElementById('k5').innerText = money(metaAcumulada);
 
-    let metaALaFecha = 0;
-    const hoy = new Date();
-    const hoyNum = `${hoy.getFullYear()}${String(hoy.getMonth()+1).padStart(2,'0')}${String(hoy.getDate()).padStart(2,'0')}`;
-    filM.forEach(d => { if (compareFechaNum(d.fecha) <= hoyNum) metaALaFecha += (d[metaCampo] || 0); });
-    document.getElementById('pAlcanceReal').innerText = (metaALaFecha > 0 ? (tot / metaALaFecha) * 100 : 0).toFixed(1) + '%';
-    document.getElementById('pAlcanceTotal').innerText = (metaTot > 0 ? (tot / metaTot) * 100 : 0).toFixed(1) + '%';
+    document.getElementById('pAlcanceReal').innerText = (metaAcumulada > 0 ? (tot / metaAcumulada) * 100 : 0).toFixed(1) + '%';
+    document.getElementById('pAlcanceTotal').innerText = (metaMesCompleto > 0 ? (tot / metaMesCompleto) * 100 : 0).toFixed(1) + '%';
     document.getElementById('vProyeccion').innerText = money((diasOp > 0 ? tot / diasOp : 0) * (filM.length || 30));
 
-    renderTendencia(filV, filM, s, m, a, metaCampo);
+    renderTendencia(filV, filMHastaVenta, s, m, a, metaCampo);
     renderSedes(filV, s);
     renderCC(filV);
     renderAsignadora(filV);
@@ -306,12 +397,14 @@ function renderTendencia(ventas, metas, sedeSel, mesSel, anioSel, metaCampo) {
     let labels = [], dataReal = [], dataMeta = [];
     const titulo = document.getElementById('titleEvo');
     if (mesSel === 'TODOS') {
-        titulo.innerText = 'Comparativo Total Acumulado';
+        const ultima = maxFechaVentas(ventas);
+        titulo.innerText = ultima ? `Comparativo Total Acumulado hasta ${ultima}` : 'Comparativo Total Acumulado';
         labels = ['ACUMULADO'];
         dataReal = [ventas.reduce((acc, d) => acc + d.venta, 0)];
         dataMeta = [metas.reduce((acc, d) => acc + (d[metaCampo] || 0), 0)];
     } else {
-        titulo.innerText = `Detalle Diario: ${mesSel}`;
+        const ultima = maxFechaVentas(ventas);
+        titulo.innerText = ultima ? `Detalle Diario: ${mesSel} hasta ${ultima}` : `Detalle Diario: ${mesSel}`;
         metas.forEach(m => {
             const ventaDia = ventas.filter(v => v.fecha === m.fecha).reduce((acc, v) => acc + v.venta, 0);
             labels.push(m.fecha.substring(0, 5));
@@ -333,6 +426,7 @@ function makeChart(id, config) {
     charts[id] = new Chart(document.getElementById(id), config);
 }
 function createBar(id, labels, data, isMoney, thick, colorList) {
+    if (!labels.length) { labels = ['SIN DATOS']; data = [0]; }
     makeChart(id, {
         type: 'bar',
         data: { labels, datasets: [{ data, backgroundColor: labels.map((_, i) => colorList[i % colorList.length]), borderRadius: 10, barThickness: thick }] },
@@ -341,7 +435,6 @@ function createBar(id, labels, data, isMoney, thick, colorList) {
 }
 function renderSedes(fil, sel) {
     let lbs = sel !== 'TODOS' ? [sel] : [...new Set(fil.map(d => d.sedeXX))].filter(Boolean).sort();
-    if (!lbs.length) lbs = ['SIN DATOS'];
     createBar('chSedes', lbs, lbs.map(l => fil.filter(d => d.sedeXX === l || d.sedeXX.includes(l)).reduce((s,d)=>s+d.venta,0)), true, 50, palette);
 }
 function topLabelsByValue(obj, limit=12) {
@@ -349,7 +442,12 @@ function topLabelsByValue(obj, limit=12) {
 }
 function renderCC(fil) {
     let venta = {}, pac = {};
-    fil.forEach(d => { const k = d.cc || 'OTROS'; venta[k] = (venta[k] || 0) + d.venta; if (!pac[k]) pac[k] = new Set(); if (d.pacienteId) pac[k].add(d.pacienteId); });
+    fil.forEach(d => {
+        const k = d.cc || 'OTROS';
+        venta[k] = (venta[k] || 0) + d.venta;
+        if (!pac[k]) pac[k] = new Set();
+        if (d.pacienteId) pac[k].add(d.pacienteId);
+    });
     const ccs = topLabelsByValue(venta, 12);
     createBar('chCCV', ccs, ccs.map(c => venta[c] || 0), true, 22, palette);
     createBar('chCCP', ccs, ccs.map(c => pac[c] ? pac[c].size : 0), false, 22, palette);
@@ -371,7 +469,12 @@ function renderAsignadora(fil) {
         'LA POSITIVA S.A. ENTIDAD PRESTADORA DE SALUD': 'LA POSITIVA'
     };
     let venta = {}, pac = {};
-    fil.forEach(d => { const k = nombresCortos[d.aseguradora] || d.aseguradora || 'PARTICULAR'; venta[k] = (venta[k] || 0) + d.venta; if (!pac[k]) pac[k] = new Set(); if (d.pacienteId) pac[k].add(d.pacienteId); });
+    fil.forEach(d => {
+        const k = nombresCortos[d.aseguradora] || d.aseguradora || 'PARTICULAR';
+        venta[k] = (venta[k] || 0) + d.venta;
+        if (!pac[k]) pac[k] = new Set();
+        if (d.pacienteId) pac[k].add(d.pacienteId);
+    });
     const labels = topLabelsByValue(venta, 10);
     createBar('chAsigV', labels, labels.map(l => venta[l] || 0), true, 22, palette);
     createBar('chAsigP', labels, labels.map(l => pac[l] ? pac[l].size : 0), false, 22, palette);
@@ -380,3 +483,4 @@ load();
 </script>
 </body>
 </html>
+

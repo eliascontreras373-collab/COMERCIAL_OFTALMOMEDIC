@@ -7,35 +7,35 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <style>
-        :root { --primary: #064e3b; --accent: #f59e0b; --bg: #f1f5f9; --white: #ffffff; }
+        :root { --primary: #064e3b; --accent: #f59e0b; --bg: #f1f5f9; --white: #ffffff; --danger:#b91c1c; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); padding: 15px; color: #0f172a; }
+        body { font-family: Arial, Helvetica, sans-serif; background-color: var(--bg); padding: 15px; color: #0f172a; }
         .container { max-width: 1400px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: var(--white); padding: 20px; border-radius: 12px; border-left: 10px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .header { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 15px; background: var(--white); padding: 20px; border-radius: 12px; border-left: 10px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }
         .logo h1 { font-size: 28px; color: var(--primary); font-weight: 900; letter-spacing: -1px; }
-        .filters { display: flex; gap: 12px; }
-        select { padding: 10px 15px; border-radius: 8px; border: 2px solid #cbd5e1; font-weight: 800; color: var(--primary); outline: none; cursor: pointer; }
-        
+        .logo p { color:#64748b; font-weight:700; margin-top:4px; }
+        .filters { display: flex; gap: 12px; flex-wrap: wrap; }
+        select { padding: 10px 15px; border-radius: 8px; border: 2px solid #cbd5e1; font-weight: 800; color: var(--primary); outline: none; cursor: pointer; background:white; }
+        .alert { display:none; background:#fee2e2; color:#7f1d1d; border:1px solid #fecaca; padding:14px 16px; border-radius:10px; margin-bottom:12px; font-weight:700; white-space:pre-wrap; }
+        .info { background:#ecfdf5; color:#064e3b; border:1px solid #bbf7d0; padding:10px 14px; border-radius:10px; margin-bottom:12px; font-weight:700; }
         .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px; }
         .kpi-card { background: var(--white); padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center; }
-        .kpi-card span { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; display: block; height: 30px; }
+        .kpi-card span { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; display: block; min-height: 30px; }
         .kpi-card div { font-size: 22px; font-weight: 900; margin-top: 4px; color: var(--primary); }
-        
         .reach-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 15px 0; }
         .reach-card { background: var(--white); padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center; }
         .reach-card.highlight { border-color: var(--accent); background: #fffcf5; }
         .reach-card span { font-weight: 800; color: #64748b; font-size: 13px; text-transform: uppercase; }
         .reach-card div { font-size: 32px; font-weight: 900; color: var(--primary); margin-top: 5px; }
-
         .section-title { font-size: 16px; font-weight: 900; color: var(--primary); text-transform: uppercase; margin: 25px 0 10px 0; text-align: center; border-bottom: 2px solid #cbd5e1; padding-bottom: 5px; }
         .chart-card { background: var(--white); padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 12px; }
         .wrapper-wide { height: 350px; position: relative; }
         .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px; }
         .sub-wrapper { height: 380px; position: relative; }
+        @media (max-width: 950px) { .kpi-grid, .reach-grid, .charts-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="header">
         <div class="logo"><h1>OFTALMOMEDIC</h1><p>Reporte Comercial</p></div>
@@ -47,12 +47,15 @@
         </div>
     </div>
 
+    <div id="msgError" class="alert"></div>
+    <div id="msgInfo" class="info">Cargando información...</div>
+
     <div class="kpi-grid">
         <div class="kpi-card"><span>FACTURACIÓN TOTAL</span><div id="k1">S/ 0</div></div>
-        <div class="kpi-card"><span>Días TRABAJADOS</span><div id="k2">0</div></div>
-        <div class="kpi-card"><span>Pacientes Únicos</span><div id="k3">0</div></div>
-        <div class="kpi-card"><span>Ticket Promedio</span><div id="k4">S/ 0</div></div>
-        <div class="kpi-card" style="border-bottom: 4px solid var(--accent);"><span>Meta del MES</span><div id="k5">S/ 0</div></div>
+        <div class="kpi-card"><span>DÍAS TRABAJADOS</span><div id="k2">0</div></div>
+        <div class="kpi-card"><span>PACIENTES ÚNICOS</span><div id="k3">0</div></div>
+        <div class="kpi-card"><span>TICKET PROMEDIO</span><div id="k4">S/ 0</div></div>
+        <div class="kpi-card" style="border-bottom: 4px solid var(--accent);"><span>META DEL MES</span><div id="k5">S/ 0</div></div>
     </div>
 
     <div class="reach-grid">
@@ -63,17 +66,14 @@
 
     <div class="section-title" id="titleEvo">Evolución Comercial: Real vs Meta</div>
     <div class="chart-card"><div class="wrapper-wide"><canvas id="chMix"></canvas></div></div>
-
     <div class="section-title">Análisis por Sede</div>
     <div class="chart-card"><div class="wrapper-wide"><canvas id="chSedes"></canvas></div></div>
-
     <div class="section-title">Análisis por Centro de Costo</div>
     <div class="charts-grid">
         <div class="chart-card"><div class="sub-wrapper"><canvas id="chCCV"></canvas></div></div>
         <div class="chart-card"><div class="sub-wrapper"><canvas id="chCCP"></canvas></div></div>
     </div>
-
-    <div class="section-title">Análisis por Aseguradora</div>
+    <div class="section-title">Análisis por Aseguradora / Plan</div>
     <div class="charts-grid">
         <div class="chart-card"><div class="sub-wrapper"><canvas id="chAsigV"></canvas></div></div>
         <div class="chart-card"><div class="sub-wrapper"><canvas id="chAsigP"></canvas></div></div>
@@ -81,245 +81,302 @@
 </div>
 
 <script>
-    Chart.register(ChartDataLabels);
-    let rawData = [], metasDiarias = [], charts = {};
+Chart.register(ChartDataLabels);
+let rawData = [], metasDiarias = [], charts = {};
+const MESES = {"ENERO":"01","FEBRERO":"02","MARZO":"03","ABRIL":"04","MAYO":"05","JUNIO":"06","JULIO":"07","AGOSTO":"08","SETIEMBRE":"09","SEPTIEMBRE":"09","OCTUBRE":"10","NOVIEMBRE":"11","DICIEMBRE":"12"};
+const MESES_NOMBRE = {"01":"Enero","02":"Febrero","03":"Marzo","04":"Abril","05":"Mayo","06":"Junio","07":"Julio","08":"Agosto","09":"Septiembre","10":"Octubre","11":"Noviembre","12":"Diciembre"};
+const palette = ['#064e3b', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
 
-    const cleanNum = (val) => {
-        if (!val) return 0;
-        let str = val.toString().replace(/[S\/, \s]/g, "").trim();
-        return parseFloat(str) || 0;
-    };
+const showError = (txt) => {
+    const e = document.getElementById('msgError');
+    e.style.display = 'block';
+    e.innerText = txt;
+};
+const showInfo = (txt) => {
+    const i = document.getElementById('msgInfo');
+    i.style.display = txt ? 'block' : 'none';
+    i.innerText = txt || '';
+};
 
-    const normFecha = (f) => {
-        if(!f) return "";
-        let p = f.split('/');
-        if(p.length !== 3) return f;
-        return `${p[0].padStart(2,'0')}/${p[1].padStart(2,'0')}/${p[2]}`;
-    };
-
-    const money = v => "S/ " + Math.round(v).toLocaleString('es-PE');
-    const palette = ['#064e3b', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
-
-    async function load() {
-        try {
-            const vParam = `?v=${new Date().getTime()}`;
-            const respV = await fetch('ventas.csv' + vParam);
-            const textV = await respV.text();
-            rawData = textV.split('\n').slice(1).filter(r => r.trim() !== "").map(r => {
-                let c = r.split(r.includes(';') ? ';' : ',');
-                return {
-                    venta: parseFloat(c[22]) || 0,
-                    pacienteId: c[5]?.trim(),
-                    cc: (c[23] || "OTROS").trim(),
-                    aseguradora: (c[19] || 'PARTICULAR').toUpperCase().trim(),
-                    sedeXX: (c[25] || '').trim().toUpperCase(),
-                    mes: c[26]?.trim(),
-                    anio: c[27]?.trim(),
-                    fecha: normFecha(c[0]?.trim())
-                };
-            });
-
-            const respM = await fetch('metas.csv' + vParam);
-            const textM = await respM.text();
-            metasDiarias = textM.split('\n').slice(1).filter(r => r.trim() !== "").map(r => {
-                let c = r.split(r.includes(';') ? ';' : ',');
-                let fN = normFecha(c[0]?.trim());
-                return {
-                    fecha: fN, mesNum: fN.split('/')[1], anio: fN.split('/')[2],
-                    metaGlobal: cleanNum(c[1]), metaCentro: cleanNum(c[2]), metaNorte: cleanNum(c[3])
-                };
-            });
-
-            const fill = (id, vals) => {
-                const s = document.getElementById(id);
-                s.innerHTML = `<option value="TODOS">${id === 'fSede' ? 'SEDE (TODAS)' : id === 'fAnio' ? 'AÑO' : id === 'fMes' ? 'MES' : 'DÍA'}</option>`;
-                [...new Set(vals)].filter(v => v).sort().forEach(v => s.innerHTML += `<option value="${v}">${v}</option>`);
-            };
-            fill('fSede', rawData.map(d => d.sedeXX));
-            fill('fAnio', rawData.map(d => d.anio));
-            fill('fMes', rawData.map(d => d.mes));
-            fill('fDia', rawData.map(d => d.fecha ? d.fecha.substring(0, 2) : ''));
-            
-            document.querySelectorAll('select').forEach(s => s.onchange = update);
-            update();
-        } catch (e) { console.error(e); }
+function cleanNum(val) {
+    if (val === null || val === undefined) return 0;
+    let str = String(val).replace(/S\//g, '').replace(/\s/g, '').trim();
+    if (!str) return 0;
+    // Soporta 1,234.56 y 1.234,56
+    if (str.includes(',') && str.includes('.')) {
+        if (str.lastIndexOf(',') > str.lastIndexOf('.')) str = str.replace(/\./g, '').replace(',', '.');
+        else str = str.replace(/,/g, '');
+    } else if (str.includes(',')) {
+        str = str.replace(',', '.');
     }
-
-    function update() {
-        const s = document.getElementById('fSede').value;
-        const a = document.getElementById('fAnio').value;
-        const m = document.getElementById('fMes').value;
-        const dia = document.getElementById('fDia').value;
-
-        const filV = rawData.filter(d => 
-            (s === "TODOS" || d.sedeXX.includes(s)) &&
-            (a === "TODOS" || d.anio === a) && 
-            (m === "TODOS" || d.mes === m) &&
-            (dia === "TODOS" || d.fecha.substring(0, 2) === dia)
-        );
-
-        const mesesMap = {"Enero":"01","Febrero":"02","Marzo":"03","Abril":"04","Mayo":"05","Junio":"06","Julio":"07","Agosto":"08","Septiembre":"09","Octubre":"10","Noviembre":"11","Diciembre":"12"};
-        const mNum = mesesMap[m] || "";
-
-        const filM = metasDiarias.filter(d => 
-            (a === "2026") && (m === "TODOS" || d.mesNum === mNum) && (dia === "TODOS" || d.fecha.substring(0, 2) === dia)
-        ).sort((x,y) => x.fecha.split('/').reverse().join('').localeCompare(y.fecha.split('/').reverse().join('')));
-
-        const tot = filV.reduce((acc, d) => acc + d.venta, 0);
-        const metaTot = filM.reduce((acc, d) => acc + (s === "CENTRO" ? d.metaCentro : s === "NORTE" ? d.metaNorte : d.metaGlobal), 0);
-
-        document.getElementById('k1').innerText = money(tot);
-        const diasOp = [...new Set(filV.map(d => d.fecha))].length;
-        document.getElementById('k2').innerText = diasOp;
-        const pacUnicos = [...new Set(filV.map(d => d.pacienteId))].length;
-        document.getElementById('k3').innerText = pacUnicos;
-        document.getElementById('k4').innerText = money(tot / (pacUnicos || 1));
-        document.getElementById('k5').innerText = money(metaTot);
-
-        let metaALaFecha = 0;
-        const hoy = new Date();
-        const hoyStr = `${hoy.getDate().toString().padStart(2,'0')}/${(hoy.getMonth()+1).toString().padStart(2,'0')}/${hoy.getFullYear()}`;
-        filM.forEach(diaMeta => {
-            if(diaMeta.fecha.split('/').reverse().join('') <= hoyStr.split('/').reverse().join('')) {
-                metaALaFecha += (s === "CENTRO" ? diaMeta.metaCentro : s === "NORTE" ? diaMeta.metaNorte : diaMeta.metaGlobal);
-            }
-        });
-
-        document.getElementById('pAlcanceReal').innerText = (metaALaFecha > 0 ? (tot / metaALaFecha) * 100 : 0).toFixed(1) + "%";
-        document.getElementById('pAlcanceTotal').innerText = (metaTot > 0 ? (tot / metaTot) * 100 : 0).toFixed(1) + "%";
-        document.getElementById('vProyeccion').innerText = money((diasOp > 0 ? tot / diasOp : 0) * (filM.length || 30));
-
-        renderTendencia(filV, filM, s, m, a);
-        renderSedes(filV, s);
-        renderCC(filV);
-        renderAsignadora(filV);
+    return parseFloat(str) || 0;
+}
+function money(v) { return "S/ " + Math.round(v || 0).toLocaleString('es-PE'); }
+function normKey(k) {
+    return String(k || '')
+        .replace(/^\uFEFF/, '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .trim().toUpperCase();
+}
+function val(row, names) {
+    for (const n of names) {
+        const key = normKey(n);
+        if (Object.prototype.hasOwnProperty.call(row, key)) return row[key];
     }
-
-    function renderTendencia(ventas, metas, sedeSel, mesSel, anioSel) {
-        let labels = [], dataReal = [], dataMeta = [];
-        const titulo = document.getElementById('titleEvo');
-        if (mesSel === "TODOS") {
-            titulo.innerText = "Comparativo Total Acumulado";
-            labels = ["ACUMULADO"];
-            dataReal = [ventas.reduce((acc, d) => acc + d.venta, 0)];
-            dataMeta = (anioSel === "2026") ? [metas.reduce((acc, d) => acc + (sedeSel === "CENTRO" ? d.metaCentro : sedeSel === "NORTE" ? d.metaNorte : d.metaGlobal), 0)] : [0];
+    return '';
+}
+function normFecha(f) {
+    if (!f) return '';
+    let s = String(f).trim();
+    if (!s) return '';
+    if (s.includes('T')) s = s.split('T')[0];
+    s = s.replace(/-/g, '/');
+    let p = s.split('/');
+    if (p.length !== 3) return s;
+    // Si viene YYYY/MM/DD
+    if (p[0].length === 4) return `${p[2].padStart(2,'0')}/${p[1].padStart(2,'0')}/${p[0]}`;
+    return `${p[0].padStart(2,'0')}/${p[1].padStart(2,'0')}/${p[2]}`;
+}
+function mesDesdeFecha(fecha) {
+    const p = String(fecha || '').split('/');
+    return p.length === 3 ? (MESES_NOMBRE[p[1]] || '') : '';
+}
+function anioDesdeFecha(fecha) {
+    const p = String(fecha || '').split('/');
+    return p.length === 3 ? p[2] : '';
+}
+function compareFechaNum(fecha) {
+    const p = String(fecha || '').split('/');
+    if (p.length !== 3) return '';
+    return `${p[2]}${p[1]}${p[0]}`;
+}
+function detectarSeparador(text) {
+    const first = text.split(/\r?\n/).find(l => l.trim()) || '';
+    const tabs = (first.match(/\t/g) || []).length;
+    const semis = (first.match(/;/g) || []).length;
+    const commas = (first.match(/,/g) || []).length;
+    if (tabs >= semis && tabs >= commas && tabs > 0) return '\t';
+    if (semis >= commas && semis > 0) return ';';
+    return ',';
+}
+function parseCSV(text) {
+    text = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const sep = detectarSeparador(text);
+    let rows = [], row = [], cur = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i], next = text[i + 1];
+        if (ch === '"') {
+            if (inQuotes && next === '"') { cur += '"'; i++; }
+            else inQuotes = !inQuotes;
+        } else if (ch === sep && !inQuotes) {
+            row.push(cur); cur = '';
+        } else if (ch === '\n' && !inQuotes) {
+            row.push(cur); rows.push(row); row = []; cur = '';
         } else {
-            titulo.innerText = `Detalle Diario: ${mesSel}`;
-            metas.forEach(m => {
-                const ventaDia = ventas.filter(v => v.fecha === m.fecha).reduce((acc, v) => acc + v.venta, 0);
-                if (ventaDia > 0) {
-                    labels.push(m.fecha.substring(0, 5));
-                    dataReal.push(ventaDia);
-                    dataMeta.push(sedeSel === "CENTRO" ? m.metaCentro : (sedeSel === "NORTE" ? m.metaNorte : m.metaGlobal));
-                }
-            });
+            cur += ch;
         }
-        if(charts['chMix']) charts['chMix'].destroy();
-        charts['chMix'] = new Chart(document.getElementById('chMix'), {
-            type: 'bar',
-            data: { 
-                labels, 
-                datasets: [
-                    { label: 'Obtenido', data: dataReal, backgroundColor: '#10b981', borderRadius: 5 }, 
-                    { label: 'Meta', data: dataMeta, backgroundColor: '#e2e8f0', borderRadius: 5 }
-                ] 
-            },
-            options: { 
-                maintainAspectRatio: false, 
-                plugins: { 
-                    datalabels: { 
-                        display: true,
-                        anchor: (context) => context.datasetIndex === 1 ? 'start' : 'end',
-                        align: (context) => context.datasetIndex === 1 ? 'top' : 'top', 
-                        offset: (context) => context.datasetIndex === 1 ? 8 : 0, 
-                        formatter: v => v > 0 ? money(v) : '', 
-                        font: { weight: 'bold', size: 14 }
-                    } 
-                }, 
-                scales: { 
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { callback: v => money(v) },
-                        suggestedMax: Math.max(...dataReal, ...dataMeta) * 1.15
-                    } 
-                } 
-            }
+    }
+    if (cur.length || row.length) { row.push(cur); rows.push(row); }
+    rows = rows.filter(r => r.some(c => String(c).trim() !== ''));
+    if (!rows.length) return [];
+    const headers = rows[0].map(h => normKey(h));
+    return rows.slice(1).map(r => {
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = (r[i] || '').trim());
+        return obj;
+    });
+}
+async function fetchTextSmart(url) {
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) throw new Error(`No se pudo cargar ${url}. Estado HTTP: ${resp.status}`);
+    const buf = await resp.arrayBuffer();
+    try { return new TextDecoder('utf-8', {fatal:true}).decode(buf); }
+    catch(e) { return new TextDecoder('windows-1252').decode(buf); }
+}
+
+async function load() {
+    try {
+        const vParam = `?v=${Date.now()}`;
+        const textV = await fetchTextSmart('ventas.csv' + vParam);
+        const ventasRows = parseCSV(textV);
+
+        rawData = ventasRows.map(row => {
+            const fecha = normFecha(val(row, ['FECHA', 'Fecha']));
+            const mesArchivo = String(val(row, ['MES', 'Mes'])).trim();
+            const anioArchivo = String(val(row, ['AÑOS', 'ANOS', 'AÑO', 'ANIO', 'Anio'])).trim();
+            return {
+                venta: cleanNum(val(row, ['FAC TOTAL', 'FACT TOTAL', 'TOTAL', 'VENTA', 'IMPORTE'])),
+                pacienteId: String(val(row, ['DNI', 'Paciente', 'PACIENTE', 'NUM HIST'])).trim(),
+                cc: (String(val(row, ['CENTRO COSTO', 'CENTRO DE COSTO', 'CC'])).trim() || 'OTROS').toUpperCase(),
+                aseguradora: (String(val(row, ['DES PLAN', 'ASEGURADORA', 'CONTRATANTE', 'TIPO PAGO'])).trim() || 'PARTICULAR').toUpperCase(),
+                sedeXX: (String(val(row, ['SedeXX', 'SEDEXX', 'SEDE'])).trim() || 'SIN SEDE').toUpperCase(),
+                mes: mesArchivo || mesDesdeFecha(fecha),
+                anio: anioArchivo || anioDesdeFecha(fecha),
+                fecha
+            };
+        }).filter(d => d.fecha && d.venta !== 0);
+
+        const textM = await fetchTextSmart('metas.csv' + vParam);
+        const metasRows = parseCSV(textM);
+        metasDiarias = metasRows.map(row => {
+            const fecha = normFecha(val(row, ['Fecha', 'FECHA']));
+            const p = fecha.split('/');
+            return {
+                fecha,
+                mesNum: p[1] || '',
+                anio: p[2] || '',
+                metaGlobal: cleanNum(val(row, ['Meta', 'META', 'Meta Global', 'GLOBAL'])),
+                metaCentro: cleanNum(val(row, ['CENTRO', 'Meta Centro'])),
+                metaNorte: cleanNum(val(row, ['NORTE', 'Meta Norte']))
+            };
+        }).filter(d => d.fecha);
+
+        if (!rawData.length) {
+            showError('El archivo ventas.csv cargó, pero no se encontraron ventas válidas. Revisa que existan estas columnas: FECHA, FAC TOTAL, DNI/Paciente, CENTRO COSTO, SedeXX, MES y AÑOS.');
+        }
+        if (!metasDiarias.length) {
+            showError('El archivo metas.csv cargó, pero no se encontraron metas válidas. Revisa columnas: Fecha, Meta, CENTRO, NORTE.');
+        }
+
+        fillSelect('fSede', rawData.map(d => d.sedeXX));
+        fillSelect('fAnio', rawData.map(d => d.anio));
+        fillSelect('fMes', rawData.map(d => d.mes));
+        fillSelect('fDia', rawData.map(d => d.fecha ? d.fecha.substring(0, 2) : ''));
+        document.querySelectorAll('select').forEach(s => s.onchange = update);
+        showInfo(`Datos cargados: ${rawData.length.toLocaleString('es-PE')} registros de ventas y ${metasDiarias.length.toLocaleString('es-PE')} días de metas.`);
+        update();
+    } catch (e) {
+        console.error(e);
+        showInfo('');
+        showError('ERROR AL CARGAR DATOS:\n' + e.message + '\n\nVerifica que index.html, ventas.csv y metas.csv estén en la misma carpeta y con nombres exactos en minúscula.');
+    }
+}
+function fillSelect(id, vals) {
+    const s = document.getElementById(id);
+    const label = id === 'fSede' ? 'SEDE (TODAS)' : id === 'fAnio' ? 'AÑO' : id === 'fMes' ? 'MES (TODOS)' : 'DÍA (TODOS)';
+    s.innerHTML = `<option value="TODOS">${label}</option>`;
+    [...new Set(vals)].filter(v => v).sort((a,b) => String(a).localeCompare(String(b), 'es', {numeric:true})).forEach(v => {
+        s.innerHTML += `<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`;
+    });
+}
+function update() {
+    const s = document.getElementById('fSede').value;
+    const a = document.getElementById('fAnio').value;
+    const m = document.getElementById('fMes').value;
+    const dia = document.getElementById('fDia').value;
+    const filV = rawData.filter(d =>
+        (s === 'TODOS' || d.sedeXX === s || d.sedeXX.includes(s)) &&
+        (a === 'TODOS' || d.anio === a) &&
+        (m === 'TODOS' || d.mes === m) &&
+        (dia === 'TODOS' || d.fecha.substring(0, 2) === dia)
+    );
+    const mNum = MESES[String(m).toUpperCase()] || '';
+    const filM = metasDiarias.filter(d =>
+        (a === 'TODOS' || d.anio === a) &&
+        (m === 'TODOS' || d.mesNum === mNum) &&
+        (dia === 'TODOS' || d.fecha.substring(0, 2) === dia)
+    ).sort((x,y) => compareFechaNum(x.fecha).localeCompare(compareFechaNum(y.fecha)));
+
+    const tot = filV.reduce((acc, d) => acc + d.venta, 0);
+    const metaCampo = (s === 'CENTRO') ? 'metaCentro' : (s === 'NORTE') ? 'metaNorte' : 'metaGlobal';
+    const metaTot = filM.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
+    const diasOp = [...new Set(filV.map(d => d.fecha))].length;
+    const pacUnicos = [...new Set(filV.map(d => d.pacienteId).filter(Boolean))].length;
+
+    document.getElementById('k1').innerText = money(tot);
+    document.getElementById('k2').innerText = diasOp;
+    document.getElementById('k3').innerText = pacUnicos;
+    document.getElementById('k4').innerText = money(tot / (pacUnicos || 1));
+    document.getElementById('k5').innerText = money(metaTot);
+
+    let metaALaFecha = 0;
+    const hoy = new Date();
+    const hoyNum = `${hoy.getFullYear()}${String(hoy.getMonth()+1).padStart(2,'0')}${String(hoy.getDate()).padStart(2,'0')}`;
+    filM.forEach(d => { if (compareFechaNum(d.fecha) <= hoyNum) metaALaFecha += (d[metaCampo] || 0); });
+    document.getElementById('pAlcanceReal').innerText = (metaALaFecha > 0 ? (tot / metaALaFecha) * 100 : 0).toFixed(1) + '%';
+    document.getElementById('pAlcanceTotal').innerText = (metaTot > 0 ? (tot / metaTot) * 100 : 0).toFixed(1) + '%';
+    document.getElementById('vProyeccion').innerText = money((diasOp > 0 ? tot / diasOp : 0) * (filM.length || 30));
+
+    renderTendencia(filV, filM, s, m, a, metaCampo);
+    renderSedes(filV, s);
+    renderCC(filV);
+    renderAsignadora(filV);
+}
+function renderTendencia(ventas, metas, sedeSel, mesSel, anioSel, metaCampo) {
+    let labels = [], dataReal = [], dataMeta = [];
+    const titulo = document.getElementById('titleEvo');
+    if (mesSel === 'TODOS') {
+        titulo.innerText = 'Comparativo Total Acumulado';
+        labels = ['ACUMULADO'];
+        dataReal = [ventas.reduce((acc, d) => acc + d.venta, 0)];
+        dataMeta = [metas.reduce((acc, d) => acc + (d[metaCampo] || 0), 0)];
+    } else {
+        titulo.innerText = `Detalle Diario: ${mesSel}`;
+        metas.forEach(m => {
+            const ventaDia = ventas.filter(v => v.fecha === m.fecha).reduce((acc, v) => acc + v.venta, 0);
+            labels.push(m.fecha.substring(0, 5));
+            dataReal.push(ventaDia);
+            dataMeta.push(m[metaCampo] || 0);
         });
     }
-
-    function createBar(id, labels, data, isMoney, thick, colorList) {
-        if(charts[id]) charts[id].destroy();
-        charts[id] = new Chart(document.getElementById(id), {
-            type: 'bar',
-            data: { labels, datasets: [{ data, backgroundColor: labels.map((_, i) => colorList[i % colorList.length]), borderRadius: 10, barThickness: thick }] },
-            options: {
-                indexAxis: 'y', maintainAspectRatio: false, layout: { padding: { right: 150 } },
-                plugins: { 
-                    legend: { display: false }, 
-                    datalabels: { 
-                        anchor: 'end', align: 'right', 
-                        formatter: isMoney ? money : v => v, 
-                        font: { weight: '900', size: 16 } 
-                    } 
-                },
-                scales: { x: { display: false }, y: { ticks: { font: { weight: 'bold', size: 13 }, color: '#064e3b' } } }
-            }
-        });
-    }
-
-    function renderSedes(fil, sel) {
-        let lbs = sel !== "TODOS" ? [sel] : ['CENTRO', 'NORTE'];
-        createBar('chSedes', lbs, lbs.map(l => fil.filter(d => d.sedeXX.includes(l)).reduce((s,d)=>s+d.venta,0)), true, 50, ['#064e3b', '#10b981']);
-    }
-
-    function renderCC(fil) {
-        const ccs = [...new Set(fil.map(d => d.cc))].filter(Boolean).sort();
-        createBar('chCCV', ccs, ccs.map(c => fil.filter(d => d.cc === c).reduce((s,d)=>s+d.venta,0)), true, 20, palette);
-        createBar('chCCP', ccs, ccs.map(c => [...new Set(fil.filter(d => d.cc === c).map(p=>p.pacienteId))].length), false, 20, palette);
-    }
-
-    function renderAsignadora(fil) {
-        const nombresCortos = {
-            "PROMOFARMA S A": "PROMOFARMA",
-            "INSTITUTO MEDICO QUIRURGICO AREQUIPA S.A": "OFTALMOMEDIC",
-            "CORPORACION PERUANA DE AEROPUERTOS Y AVIACION COMERCIAL SOCIEDAD ANONIMA - CORPAC S.A.": "CORPAC",
-            "PRECISA": "PRECISA",
-            "PACIFICO S.A. EPS": "PACIFICO",
-            "PACIFICO S.A. ENT. PRESTADORA DE SALUD": "PACIFICO",
-            "PACIFICO COMPAÑIA DE SEGUROS Y REASEGUROS": "PACIFICO",
-            "FONDO DE ASEG EN SALUD DE LA PNP - SALUDPOL": "SALUDPOL",
-            "COLEGIO MEDICO DEL PERU": "SENEFA",
-            "MAPFRE PERU S.A. EPS": "MAPFRE",
-            "MAPFRE PERU CIA DE SEGUROS Y REASEGUROS S.A.": "MAPFRE",
-            "MAPFRE PERU S.A. ENTIDAD PRESTADORA DE SALUD": "MAPFRE",
-            "FONDO DE EMPLEADOS DEL BANCO DE LA NACION": "BANCO DE LA NACION",
-            "LA POSITIVA SEGUROS Y REASEGUROS": "LA POSITIVA",
-            "LA POSITIVA S.A. ENTIDAD PRESTADORA DE SALUD": "LA POSITIVA",
-            "PARTICULAR": "OFTALMOMEDIC",
-            "IAFAS DEL EJERCITO DEL PERU (FOSPEME)": "EJERCITO",
-            "FONDO DE PRESTACIONES ASISTENCIALES Y SERVICIOS FUNERARIOS DE LOS TRABAJADORES, PENSIONISTAS Y EX-TR": "FOPASEF",
-            "RIMAC S.A. ENTIDAD PRESTADORA DE SALUD": "RIMAC EPS"
-        };
-
-        let agrupadoVenta = {};
-        let agrupadoPac = {};
-
-        fil.forEach(d => {
-            let nombre = nombresCortos[d.aseguradora] || d.aseguradora;
-            agrupadoVenta[nombre] = (agrupadoVenta[nombre] || 0) + d.venta;
-            if (!agrupadoPac[nombre]) agrupadoPac[nombre] = new Set();
-            agrupadoPac[nombre].add(d.pacienteId);
-        });
-
-        const labelsOrdenados = Object.keys(agrupadoVenta)
-            .sort((a, b) => agrupadoVenta[b] - agrupadoVenta[a])
-            .slice(0, 8);
-
-        createBar('chAsigV', labelsOrdenados, labelsOrdenados.map(l => agrupadoVenta[l]), true, 20, palette);
-        createBar('chAsigP', labelsOrdenados, labelsOrdenados.map(l => agrupadoPac[l].size), false, 20, palette);
-    }
-
-    load();
+    makeChart('chMix', {
+        type: 'bar',
+        data: { labels, datasets: [
+            { label: 'Obtenido', data: dataReal, backgroundColor: '#10b981', borderRadius: 5 },
+            { label: 'Meta', data: dataMeta, backgroundColor: '#e2e8f0', borderRadius: 5 }
+        ]},
+        options: { maintainAspectRatio:false, plugins:{ datalabels:{ display:true, anchor:'end', align:'top', formatter:v=>v>0?money(v):'', font:{weight:'bold', size:12} } }, scales:{ y:{ beginAtZero:true, ticks:{ callback:v=>money(v) }, suggestedMax: Math.max(1, ...dataReal, ...dataMeta) * 1.15 } } }
+    });
+}
+function makeChart(id, config) {
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), config);
+}
+function createBar(id, labels, data, isMoney, thick, colorList) {
+    makeChart(id, {
+        type: 'bar',
+        data: { labels, datasets: [{ data, backgroundColor: labels.map((_, i) => colorList[i % colorList.length]), borderRadius: 10, barThickness: thick }] },
+        options: { indexAxis:'y', maintainAspectRatio:false, layout:{ padding:{ right:150 } }, plugins:{ legend:{display:false}, datalabels:{ anchor:'end', align:'right', formatter:isMoney?money:(v=>v), font:{weight:'900', size:14} } }, scales:{ x:{ display:false, beginAtZero:true }, y:{ ticks:{ font:{weight:'bold', size:12}, color:'#064e3b' } } } }
+    });
+}
+function renderSedes(fil, sel) {
+    let lbs = sel !== 'TODOS' ? [sel] : [...new Set(fil.map(d => d.sedeXX))].filter(Boolean).sort();
+    if (!lbs.length) lbs = ['SIN DATOS'];
+    createBar('chSedes', lbs, lbs.map(l => fil.filter(d => d.sedeXX === l || d.sedeXX.includes(l)).reduce((s,d)=>s+d.venta,0)), true, 50, palette);
+}
+function topLabelsByValue(obj, limit=12) {
+    return Object.keys(obj).sort((a,b) => obj[b] - obj[a]).slice(0, limit);
+}
+function renderCC(fil) {
+    let venta = {}, pac = {};
+    fil.forEach(d => { const k = d.cc || 'OTROS'; venta[k] = (venta[k] || 0) + d.venta; if (!pac[k]) pac[k] = new Set(); if (d.pacienteId) pac[k].add(d.pacienteId); });
+    const ccs = topLabelsByValue(venta, 12);
+    createBar('chCCV', ccs, ccs.map(c => venta[c] || 0), true, 22, palette);
+    createBar('chCCP', ccs, ccs.map(c => pac[c] ? pac[c].size : 0), false, 22, palette);
+}
+function renderAsignadora(fil) {
+    const nombresCortos = {
+        'PROMOFARMA S A': 'PROMOFARMA',
+        'INSTITUTO MEDICO QUIRURGICO AREQUIPA S.A': 'OFTALMOMEDIC',
+        'CORPORACION PERUANA DE AEROPUERTOS Y AVIACION COMERCIAL SOCIEDAD ANONIMA - CORPAC S.A.': 'CORPAC',
+        'PACIFICO S.A. EPS': 'PACIFICO',
+        'PACIFICO S.A. ENT. PRESTADORA DE SALUD': 'PACIFICO',
+        'PACIFICO COMPAÑIA DE SEGUROS Y REASEGUROS': 'PACIFICO',
+        'FONDO DE ASEG EN SALUD DE LA PNP - SALUDPOL': 'SALUDPOL',
+        'MAPFRE PERU S.A. EPS': 'MAPFRE',
+        'MAPFRE PERU CIA DE SEGUROS Y REASEGUROS S.A.': 'MAPFRE',
+        'MAPFRE PERU S.A. ENTIDAD PRESTADORA DE SALUD': 'MAPFRE',
+        'PARTICULAR': 'OFTALMOMEDIC',
+        'LA POSITIVA SEGUROS Y REASEGUROS': 'LA POSITIVA',
+        'LA POSITIVA S.A. ENTIDAD PRESTADORA DE SALUD': 'LA POSITIVA'
+    };
+    let venta = {}, pac = {};
+    fil.forEach(d => { const k = nombresCortos[d.aseguradora] || d.aseguradora || 'PARTICULAR'; venta[k] = (venta[k] || 0) + d.venta; if (!pac[k]) pac[k] = new Set(); if (d.pacienteId) pac[k].add(d.pacienteId); });
+    const labels = topLabelsByValue(venta, 10);
+    createBar('chAsigV', labels, labels.map(l => venta[l] || 0), true, 22, palette);
+    createBar('chAsigP', labels, labels.map(l => pac[l] ? pac[l].size : 0), false, 22, palette);
+}
+load();
 </script>
 </body>
 </html>

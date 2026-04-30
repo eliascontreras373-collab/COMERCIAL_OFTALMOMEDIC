@@ -106,6 +106,13 @@
         <div class="chart-card"><div class="sub-wrapper"><canvas id="chAsigV"></canvas></div></div>
         <div class="chart-card"><div class="sub-wrapper"><canvas id="chAsigP"></canvas></div></div>
     </div>
+
+    <div class="section-title">Embudo de Conversión OFTALMOMEDIC (Consulta → Otros)</div>
+    <div class="chart-card">
+        <div class="wrapper-wide">
+            <canvas id="chFunnel"></canvas>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -298,6 +305,14 @@ async function load() {
                 venta: cleanNum(val(row, ['FAC TOTAL', 'FACT TOTAL', 'TOTAL', 'VENTA', 'IMPORTE'])),
                 pacienteId: String(val(row, ['DNI', 'NUM HIST'])).trim(),
                 pacienteNombre: String(val(row, ['Paciente', 'PACIENTE'])).trim(),
+                pacienteKey: (
+                    String(val(row, ['DNI', 'NUM HIST'])).trim() ||
+                    String(val(row, ['Paciente', 'PACIENTE']))
+                        .toUpperCase()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                ),
                 cc: (String(val(row, ['CENTRO COSTO', 'CENTRO DE COSTO', 'CC'])).trim() || 'OTROS').toUpperCase(),
                 // Usa primero la columna ASEGURADORA; si no existe, usa DES PLAN como respaldo.
                 aseguradora: (String(val(row, ['ASEGURADORA', 'DES PLAN', 'CONTRATANTE', 'TIPO PAGO'])).trim() || 'PARTICULAR').toUpperCase(),
@@ -377,7 +392,7 @@ function update() {
     const metaAcumulada = filMHastaVenta.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const metaMesCompleto = filM.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const diasOp = [...new Set(filV.map(d => d.fecha))].length;
-    const pacUnicos = [...new Set(filV.map(d => d.pacienteId).filter(Boolean))].length;
+    const pacUnicos = [...new Set(filV.map(d => d.pacienteKey).filter(Boolean))].length;
 
     document.getElementById('k1').innerText = money(tot);
     document.getElementById('k2').innerText = diasOp;
@@ -393,6 +408,7 @@ function update() {
     renderSedes(filV, s);
     renderCC(filV);
     renderAsignadora(filV);
+    renderFunnel(filV);
 }
 function renderTendencia(ventas, metas, sedeSel, mesSel, anioSel, metaCampo) {
     let labels = [], dataReal = [], dataMeta = [];
@@ -447,7 +463,7 @@ function renderCC(fil) {
         const k = d.cc || 'OTROS';
         venta[k] = (venta[k] || 0) + d.venta;
         if (!pac[k]) pac[k] = new Set();
-        if (d.pacienteId) pac[k].add(d.pacienteId);
+        if (d.pacienteKey) pac[k].add(d.pacienteKey);
     });
     const ccs = topLabelsByValue(venta, 12);
     createBar('chCCV', ccs, ccs.map(c => venta[c] || 0), true, 22, palette);
@@ -485,6 +501,97 @@ function renderAsignadora(fil) {
     createBar('chAsigV', labels, labels.map(l => venta[l] || 0), true, 22, palette);
     createBar('chAsigP', labels, labels.map(l => pac[l] ? pac[l].size : 0), false, 22, palette);
 }
+function renderFunnel(fil) {
+    const normaliza = (txt) => (txt || '')
+        .toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    // IMPORTANTE:
+    // El embudo SOLO mide OFTALMOMEDIC/PARTICULAR.
+    // Así no mezcla aseguradoras que pueden llegar directo a cirugía/procedimientos sin pasar por consulta.
+    const filOftalmo = fil.filter(d => {
+        const aseg = normaliza(d.aseguradora);
+        return aseg.includes('OFTALMOMEDIC') || aseg.includes('PARTICULAR');
+    });
+
+    // 1) Base del embudo: pacientes únicos OFTALMOMEDIC que pasaron por CONSULTA.
+    const pacientesConsulta = new Set(
+        filOftalmo
+            .filter(d => normaliza(d.cc).includes('CONSULTA'))
+            .map(d => d.pacienteKey || normaliza(d.pacienteNombre))
+            .filter(Boolean)
+    );
+
+    const totalConsulta = pacientesConsulta.size;
+
+    // 2) De esos pacientes de consulta, revisar a qué otros centros de costo llegaron.
+    const conversion = {};
+    filOftalmo.forEach(d => {
+        const paciente = d.pacienteKey || normaliza(d.pacienteNombre);
+        const centroCosto = normaliza(d.cc);
+
+        if (pacientesConsulta.has(paciente) && centroCosto && !centroCosto.includes('CONSULTA')) {
+            if (!conversion[centroCosto]) conversion[centroCosto] = new Set();
+            conversion[centroCosto].add(paciente);
+        }
+    });
+
+    // 3) Consulta siempre primero; los demás centros de costo de mayor a menor.
+    const ordenados = Object.entries(conversion)
+        .map(([cc, pacientes]) => ({ cc, valor: pacientes.size }))
+        .sort((a, b) => b.valor - a.valor)
+        .slice(0, 12);
+
+    const labels = ['CONSULTA OFTALMOMEDIC', ...ordenados.map(x => x.cc)];
+    const values = [totalConsulta, ...ordenados.map(x => x.valor)];
+
+    makeChart('chFunnel', {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+                borderRadius: 10,
+                barThickness: 28
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            maintainAspectRatio: false,
+            layout: { padding: { right: 150 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            const valor = ctx.raw || 0;
+                            const pct = totalConsulta > 0 ? ((valor / totalConsulta) * 100).toFixed(1) : '0.0';
+                            return `${valor.toLocaleString('es-PE')} pacientes (${pct}%)`;
+                        }
+                    }
+                },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'right',
+                    formatter: function(v) {
+                        const pct = totalConsulta > 0 ? ((v / totalConsulta) * 100).toFixed(1) : '0.0';
+                        return `${v.toLocaleString('es-PE')} (${pct}%)`;
+                    },
+                    font: { weight: '900', size: 13 },
+                    color: '#0f172a'
+                }
+            },
+            scales: {
+                x: { beginAtZero: true, display: false },
+                y: { ticks: { font: { weight: 'bold', size: 12 }, color: '#064e3b' } }
+            }
+        }
+    });
+}
+
 load();
 </script>
 </body>

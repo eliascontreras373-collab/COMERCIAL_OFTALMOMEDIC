@@ -384,12 +384,15 @@ function update() {
         (diasSel.length === 0 || diasSel.includes(d.fecha.substring(0, 2)))
     ).sort((x,y) => compareFechaNum(x.fecha).localeCompare(compareFechaNum(y.fecha)));
 
-    // Para gráficos y meta acumulada: solo hasta el último día que existe en ventas filtradas.
-    const filMHastaVenta = metasHastaUltimaVenta(filM, filV);
+    // CORRECCIÓN:
+    // La meta acumulada y el gráfico deben respetar todas las metas filtradas del mes/día,
+    // incluso si el último día no tiene venta. Antes se cortaba hasta la última fecha con venta,
+    // por eso no aparecía el 30/04 ni sumaba la meta de ese día.
+    const filMParaGrafico = filM;
 
     const tot = filV.reduce((acc, d) => acc + d.venta, 0);
     const metaCampo = (s === 'CENTRO') ? 'metaCentro' : (s === 'NORTE') ? 'metaNorte' : 'metaGlobal';
-    const metaAcumulada = filMHastaVenta.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
+    const metaAcumulada = filMParaGrafico.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const metaMesCompleto = filM.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const diasOp = [...new Set(filV.map(d => d.fecha))].length;
     const pacUnicos = [...new Set(filV.map(d => d.pacienteKey).filter(Boolean))].length;
@@ -404,7 +407,7 @@ function update() {
     document.getElementById('pAlcanceTotal').innerText = (metaMesCompleto > 0 ? (tot / metaMesCompleto) * 100 : 0).toFixed(1) + '%';
     document.getElementById('vProyeccion').innerText = money((diasOp > 0 ? tot / diasOp : 0) * (filM.length || 30));
 
-    renderTendencia(filV, filMHastaVenta, s, m, a, metaCampo);
+    renderTendencia(filV, filMParaGrafico, s, m, a, metaCampo);
     renderSedes(filV, s);
     renderCC(filV);
     renderAsignadora(filV);
@@ -420,8 +423,8 @@ function renderTendencia(ventas, metas, sedeSel, mesSel, anioSel, metaCampo) {
         dataReal = [ventas.reduce((acc, d) => acc + d.venta, 0)];
         dataMeta = [metas.reduce((acc, d) => acc + (d[metaCampo] || 0), 0)];
     } else {
-        const ultima = maxFechaVentas(ventas);
-        titulo.innerText = ultima ? `Detalle Diario: ${mesSel} hasta ${ultima}` : `Detalle Diario: ${mesSel}`;
+        const ultimaMeta = metas.length ? metas[metas.length - 1].fecha : '';
+        titulo.innerText = ultimaMeta ? `Detalle Diario: ${mesSel} hasta ${ultimaMeta}` : `Detalle Diario: ${mesSel}`;
         metas.forEach(m => {
             const ventaDia = ventas.filter(v => v.fecha === m.fecha).reduce((acc, v) => acc + v.venta, 0);
             labels.push(m.fecha.substring(0, 5));

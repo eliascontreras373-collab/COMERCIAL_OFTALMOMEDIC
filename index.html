@@ -294,7 +294,13 @@ function metasHastaUltimaVenta(metas, ventas) {
 async function load() {
     try {
         const vParam = `?v=${Date.now()}`;
-        const textV = await fetchTextSmart('ventas.csv' + vParam);
+        // Rutas corregidas para GitHub Pages, localhost y apertura desde la carpeta publicada.
+        // Busca ventas.csv y metas.csv al costado de este index.html.
+        const baseUrl = new URL('./', window.location.href);
+        const ventasUrl = new URL('ventas.csv', baseUrl).href + vParam;
+        const metasUrl = new URL('metas.csv', baseUrl).href + vParam;
+
+        const textV = await fetchTextSmart(ventasUrl);
         const ventasRows = parseCSV(textV);
 
         rawData = ventasRows.map(row => {
@@ -335,7 +341,7 @@ async function load() {
             };
         }).filter(d => d.fecha && d.venta !== 0);
 
-        const textM = await fetchTextSmart('metas.csv' + vParam);
+        const textM = await fetchTextSmart(metasUrl);
         const metasRows = parseCSV(textM);
         metasDiarias = metasRows.map(row => {
             const fecha = normFecha(val(row, ['Fecha', 'FECHA']));
@@ -618,3 +624,4 @@ load();
 </script>
 </body>
 </html>
+

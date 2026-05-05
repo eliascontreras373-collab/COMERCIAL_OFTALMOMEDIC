@@ -321,7 +321,10 @@ async function load() {
                 anio: anioArchivo || anioDesdeFecha(fecha),
                 semana: String(val(row, ['SEMANA', 'Semana'])).trim(),
                 dia: fecha ? fecha.substring(0, 2) : '',
-                fecha
+                fecha,
+                // COMPROBANTE se usa para cuadrar pacientes únicos:
+                // BO/FA = pacientes facturados; NC = pacientes con nota de crédito.
+                comprobante: String(val(row, ['COMPROBANTE', 'Comprobante'])).trim().toUpperCase()
             };
         }).filter(d => d.fecha && d.venta !== 0);
 
@@ -395,7 +398,36 @@ function update() {
     const metaAcumulada = filMParaGrafico.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const metaMesCompleto = filM.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const diasOp = [...new Set(filV.map(d => d.fecha))].length;
-    const pacUnicos = [...new Set(filV.map(d => d.pacienteKey).filter(Boolean))].length;
+
+    // CORRECCIÓN PACIENTES ÚNICOS:
+    // Fórmula solicitada:
+    // Pacientes únicos con BO o FA - Pacientes únicos con NC.
+    // La facturación se mantiene igual; solo se corrige el conteo de pacientes para cuadrar el ticket.
+    const esBOFA = (comp) => {
+        const c = String(comp || '').trim().toUpperCase();
+        return c === 'BO' || c === 'FA' || c.startsWith('BO ') || c.startsWith('FA ') || c.includes('BOLETA') || c.includes('FACTURA');
+    };
+
+    const esNC = (comp) => {
+        const c = String(comp || '').trim().toUpperCase();
+        return c === 'NC' || c.startsWith('NC ') || c.includes('NOTA DE CREDITO') || c.includes('NOTA CRÉDITO');
+    };
+
+    const pacientesBOFA = new Set(
+        filV
+            .filter(d => esBOFA(d.comprobante))
+            .map(d => d.pacienteKey)
+            .filter(Boolean)
+    );
+
+    const pacientesNC = new Set(
+        filV
+            .filter(d => esNC(d.comprobante))
+            .map(d => d.pacienteKey)
+            .filter(Boolean)
+    );
+
+    const pacUnicos = Math.max(pacientesBOFA.size - pacientesNC.size, 0);
 
     document.getElementById('k1').innerText = money(tot);
     document.getElementById('k2').innerText = diasOp;

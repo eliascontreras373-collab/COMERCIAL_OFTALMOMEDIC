@@ -316,15 +316,22 @@ async function load() {
                 cc: (String(val(row, ['CENTRO COSTO', 'CENTRO DE COSTO', 'CC'])).trim() || 'OTROS').toUpperCase(),
                 // Usa primero la columna ASEGURADORA; si no existe, usa DES PLAN como respaldo.
                 aseguradora: (String(val(row, ['ASEGURADORA', 'DES PLAN', 'CONTRATANTE', 'TIPO PAGO'])).trim() || 'PARTICULAR').toUpperCase(),
-                sedeXX: (String(val(row, ['SedeXX', 'SEDEXX', 'SEDE'])).trim() || 'SIN SEDE').toUpperCase(),
+                sedeXX: (() => {
+                    // SOPORTE NUEVA SEDE LINCE:
+                    // 1) Si existe una columna de sede normal (SedeXX / SEDE), se usa esa.
+                    // 2) Si agregaste una columna llamada LINCE y viene marcada con valor, se toma como sede LINCE.
+                    // 3) Si no hay dato, queda como SIN SEDE.
+                    const sedeBase = String(val(row, ['SedeXX', 'SEDEXX', 'SEDE', 'SEDE XX'])).trim();
+                    const marcaLince = String(val(row, ['LINCE', 'Sede Lince', 'SEDE LINCE'])).trim();
+                    if (sedeBase) return sedeBase.toUpperCase();
+                    if (marcaLince) return 'LINCE';
+                    return 'SIN SEDE';
+                })(),
                 mes: mesArchivo || mesDesdeFecha(fecha),
                 anio: anioArchivo || anioDesdeFecha(fecha),
                 semana: String(val(row, ['SEMANA', 'Semana'])).trim(),
                 dia: fecha ? fecha.substring(0, 2) : '',
-                fecha,
-                // COMPROBANTE se usa para cuadrar pacientes únicos:
-                // BO/FA = pacientes facturados; NC = pacientes con nota de crédito.
-                comprobante: String(val(row, ['COMPROBANTE', 'Comprobante'])).trim().toUpperCase()
+                fecha
             };
         }).filter(d => d.fecha && d.venta !== 0);
 
@@ -339,15 +346,16 @@ async function load() {
                 anio: p[2] || '',
                 metaGlobal: cleanNum(val(row, ['Meta', 'META', 'Meta Global', 'GLOBAL'])),
                 metaCentro: cleanNum(val(row, ['CENTRO', 'Meta Centro'])),
-                metaNorte: cleanNum(val(row, ['NORTE', 'Meta Norte']))
+                metaNorte: cleanNum(val(row, ['NORTE', 'Meta Norte'])),
+                metaLince: cleanNum(val(row, ['LINCE', 'Meta Lince']))
             };
         }).filter(d => d.fecha);
 
         if (!rawData.length) {
-            showError('El archivo ventas.csv cargó, pero no se encontraron ventas válidas. Revisa columnas: FECHA, FAC TOTAL, DNI/Paciente, CENTRO COSTO, SedeXX, MES, AÑOS, ASEGURADORA y SEMANA.');
+            showError('El archivo ventas.csv cargó, pero no se encontraron ventas válidas. Revisa columnas: FECHA, FAC TOTAL, DNI/Paciente, CENTRO COSTO, SedeXX/SEDE o LINCE, MES, AÑOS, ASEGURADORA y SEMANA.');
         }
         if (!metasDiarias.length) {
-            showError('El archivo metas.csv cargó, pero no se encontraron metas válidas. Revisa columnas: Fecha, Meta, CENTRO, NORTE.');
+            showError('El archivo metas.csv cargó, pero no se encontraron metas válidas. Revisa columnas: Fecha, Meta, CENTRO, NORTE y LINCE si usarás la nueva sede.');
         }
 
         fillSelect('fSede', rawData.map(d => d.sedeXX));
@@ -394,40 +402,11 @@ function update() {
     const filMParaGrafico = filM;
 
     const tot = filV.reduce((acc, d) => acc + d.venta, 0);
-    const metaCampo = (s === 'CENTRO') ? 'metaCentro' : (s === 'NORTE') ? 'metaNorte' : 'metaGlobal';
+    const metaCampo = (s === 'CENTRO') ? 'metaCentro' : (s === 'NORTE') ? 'metaNorte' : (s === 'LINCE') ? 'metaLince' : 'metaGlobal';
     const metaAcumulada = filMParaGrafico.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const metaMesCompleto = filM.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const diasOp = [...new Set(filV.map(d => d.fecha))].length;
-
-    // CORRECCIÓN PACIENTES ÚNICOS:
-    // Fórmula solicitada:
-    // Pacientes únicos con BO o FA - Pacientes únicos con NC.
-    // La facturación se mantiene igual; solo se corrige el conteo de pacientes para cuadrar el ticket.
-    const esBOFA = (comp) => {
-        const c = String(comp || '').trim().toUpperCase();
-        return c === 'BO' || c === 'FA' || c.startsWith('BO ') || c.startsWith('FA ') || c.includes('BOLETA') || c.includes('FACTURA');
-    };
-
-    const esNC = (comp) => {
-        const c = String(comp || '').trim().toUpperCase();
-        return c === 'NC' || c.startsWith('NC ') || c.includes('NOTA DE CREDITO') || c.includes('NOTA CRÉDITO');
-    };
-
-    const pacientesBOFA = new Set(
-        filV
-            .filter(d => esBOFA(d.comprobante))
-            .map(d => d.pacienteKey)
-            .filter(Boolean)
-    );
-
-    const pacientesNC = new Set(
-        filV
-            .filter(d => esNC(d.comprobante))
-            .map(d => d.pacienteKey)
-            .filter(Boolean)
-    );
-
-    const pacUnicos = Math.max(pacientesBOFA.size - pacientesNC.size, 0);
+    const pacUnicos = [...new Set(filV.map(d => d.pacienteKey).filter(Boolean))].length;
 
     document.getElementById('k1').innerText = money(tot);
     document.getElementById('k2').innerText = diasOp;
@@ -455,13 +434,21 @@ function renderTendencia(ventas, metas, sedeSel, mesSel, anioSel, metaCampo) {
         dataReal = [ventas.reduce((acc, d) => acc + d.venta, 0)];
         dataMeta = [metas.reduce((acc, d) => acc + (d[metaCampo] || 0), 0)];
     } else {
-        const ultimaMeta = metas.length ? metas[metas.length - 1].fecha : '';
-        titulo.innerText = ultimaMeta ? `Detalle Diario: ${mesSel} hasta ${ultimaMeta}` : `Detalle Diario: ${mesSel}`;
-        metas.forEach(m => {
-            const ventaDia = ventas.filter(v => v.fecha === m.fecha).reduce((acc, v) => acc + v.venta, 0);
-            labels.push(m.fecha.substring(0, 5));
+        // CAMBIO SOLICITADO:
+        // En el gráfico diario solo se muestran los días trabajados,
+        // es decir, días donde sí hubo venta. Ya no se dibujan todos los días del mes.
+        const fechasTrabajadas = [...new Set(ventas.map(v => v.fecha).filter(Boolean))]
+            .sort((a,b) => compareFechaNum(a).localeCompare(compareFechaNum(b)));
+
+        const ultimaVenta = fechasTrabajadas.length ? fechasTrabajadas[fechasTrabajadas.length - 1] : '';
+        titulo.innerText = ultimaVenta ? `Detalle Diario: ${mesSel} - días trabajados hasta ${ultimaVenta}` : `Detalle Diario: ${mesSel}`;
+
+        fechasTrabajadas.forEach(fecha => {
+            const ventaDia = ventas.filter(v => v.fecha === fecha).reduce((acc, v) => acc + v.venta, 0);
+            const metaDia = metas.find(m => m.fecha === fecha);
+            labels.push(fecha.substring(0, 5));
             dataReal.push(ventaDia);
-            dataMeta.push(m[metaCampo] || 0);
+            dataMeta.push(metaDia ? (metaDia[metaCampo] || 0) : 0);
         });
     }
     makeChart('chMix', {

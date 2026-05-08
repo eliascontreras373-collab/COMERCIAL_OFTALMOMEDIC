@@ -327,11 +327,32 @@ async function load() {
                     // 1) Si existe una columna de sede normal (SedeXX / SEDE), se usa esa.
                     // 2) Si agregaste una columna llamada LINCE y viene marcada con valor, se toma como sede LINCE.
                     // 3) Si no hay dato, queda como SIN SEDE.
-                    const sedeBase = String(val(row, ['SedeXX', 'SEDEXX', 'SEDE', 'SEDE XX'])).trim();
-                    const marcaLince = String(val(row, ['LINCE', 'Sede Lince', 'SEDE LINCE'])).trim();
-                    if (sedeBase) return sedeBase.toUpperCase();
-                    if (marcaLince) return 'LINCE';
-                    return 'SIN SEDE';
+                    const sedeBase = String(val(row, [
+                        'SedeXX',
+                        'SEDEXX',
+                        'SEDE',
+                        'SEDE XX',
+                        'SEDE LINCE',
+                        'SEDE_LINCE',
+                        'Lince'
+                    ])).trim();
+
+                    const marcaLince = String(val(row, [
+                        'LINCE',
+                        'Sede Lince',
+                        'SEDE LINCE'
+                    ])).trim();
+
+                    const sedeFinal = String(sedeBase || marcaLince)
+                        .toUpperCase()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .trim();
+
+                    if (sedeFinal.includes('LINCE')) return 'LINCE';
+                    if (sedeFinal.includes('CENTRO')) return 'CENTRO';
+                    if (sedeFinal.includes('NORTE')) return 'NORTE';
+
+                    return sedeFinal || 'SIN SEDE';
                 })(),
                 mes: mesArchivo || mesDesdeFecha(fecha),
                 anio: anioArchivo || anioDesdeFecha(fecha),
@@ -408,7 +429,16 @@ function update() {
     const filMParaGrafico = filM;
 
     const tot = filV.reduce((acc, d) => acc + d.venta, 0);
-    const metaCampo = (s === 'CENTRO') ? 'metaCentro' : (s === 'NORTE') ? 'metaNorte' : (s === 'LINCE') ? 'metaLince' : 'metaGlobal';
+    const sedeNormalizada = String(s || '')
+        .toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .trim();
+
+    const metaCampo =
+        sedeNormalizada.includes('CENTRO') ? 'metaCentro' :
+        sedeNormalizada.includes('NORTE') ? 'metaNorte' :
+        sedeNormalizada.includes('LINCE') ? 'metaLince' :
+        'metaGlobal';
     const metaAcumulada = filMParaGrafico.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const metaMesCompleto = filM.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
     const diasOp = [...new Set(filV.map(d => d.fecha))].length;
@@ -624,4 +654,3 @@ load();
 </script>
 </body>
 </html>
-

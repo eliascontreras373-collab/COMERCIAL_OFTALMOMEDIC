@@ -43,7 +43,20 @@
         .wrapper-wide { height: 350px; position: relative; }
         .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px; }
         .sub-wrapper { height: 380px; position: relative; }
-        @media (max-width: 950px) { .kpi-grid, .reach-grid, .charts-grid { grid-template-columns: 1fr; } }
+
+        .btn-final { width:100%; margin: 20px 0 12px 0; padding: 16px 18px; border:0; border-radius:12px; background:var(--primary); color:white; font-weight:900; font-size:16px; cursor:pointer; box-shadow:0 4px 10px rgba(6,78,59,0.25); text-transform:uppercase; }
+        .btn-final:hover { filter: brightness(1.08); }
+        .consejeras-box { display:none; background:var(--white); padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; overflow-x:auto; }
+        .consejeras-box.show { display:block; }
+        .consejeras-table { width:100%; border-collapse:collapse; font-size:13px; }
+        .consejeras-table th { background:var(--primary); color:white; text-align:left; padding:10px; text-transform:uppercase; font-size:12px; }
+        .consejeras-table td { padding:10px; border-bottom:1px solid #e2e8f0; font-weight:700; }
+        .consejeras-table tr:hover { background:#f8fafc; }
+        .consejeras-total { background:#fffcf5; font-weight:900; color:var(--primary); }
+        .consejeras-subtitle { font-size:14px; font-weight:900; color:var(--primary); text-transform:uppercase; margin:18px 0 10px 0; border-bottom:1px solid #cbd5e1; padding-bottom:6px; }
+        .consejeras-grid { display:grid; grid-template-columns:1fr; gap:15px; margin-top:15px; }
+        .consejeras-mini-box { background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px; overflow-x:auto; }
+        @media (max-width: 950px) { .kpi-grid, .reach-grid, .charts-grid, .consejeras-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -113,11 +126,29 @@
             <canvas id="chFunnel"></canvas>
         </div>
     </div>
+
+    <button class="btn-final" onclick="toggleConsejeras()">CONSEJERAS</button>
+    <div id="boxConsejeras" class="consejeras-box">
+        <div class="section-title" style="margin-top:0;">Resumen por Consejeras</div>
+        <div id="tblConsejeras"></div>
+
+        <div class="consejeras-grid">
+            <div class="consejeras-mini-box">
+                <div class="consejeras-subtitle">CONSEJERAS CC (PACIENTE)</div>
+                <div id="tblConsejerasCCPaciente"></div>
+            </div>
+            <div class="consejeras-mini-box">
+                <div class="consejeras-subtitle">CONSEJERAS CC (MONTO)</div>
+                <div id="tblConsejerasCCMonto"></div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
 Chart.register(ChartDataLabels);
-let rawData = [], metasDiarias = [], charts = {};
+let rawData = [], metasDiarias = [], consejerasData = [], charts = {};
 const MESES = {"ENERO":"01","FEBRERO":"02","MARZO":"03","ABRIL":"04","MAYO":"05","JUNIO":"06","JULIO":"07","AGOSTO":"08","SETIEMBRE":"09","SEPTIEMBRE":"09","OCTUBRE":"10","NOVIEMBRE":"11","DICIEMBRE":"12"};
 const MESES_NOMBRE = {"01":"Enero","02":"Febrero","03":"Marzo","04":"Abril","05":"Mayo","06":"Junio","07":"Julio","08":"Agosto","09":"Septiembre","10":"Octubre","11":"Noviembre","12":"Diciembre"};
 const palette = ['#064e3b', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
@@ -145,6 +176,15 @@ function cleanNum(val) {
     return parseFloat(str) || 0;
 }
 function money(v) { return "S/ " + Math.round(v || 0).toLocaleString('es-PE'); }
+
+function normalizaUsuario(txt) {
+    return String(txt || '')
+        .toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 function normKey(k) {
     return String(k || '')
         .replace(/^\uFEFF/, '')
@@ -299,6 +339,7 @@ async function load() {
         const baseUrl = new URL('./', window.location.href);
         const ventasUrl = new URL('ventas.csv', baseUrl).href + vParam;
         const metasUrl = new URL('metas.csv', baseUrl).href + vParam;
+        const consejerasUrl = new URL('consejeras.csv', baseUrl).href + vParam;
 
         const textV = await fetchTextSmart(ventasUrl);
         const ventasRows = parseCSV(textV);
@@ -358,6 +399,7 @@ async function load() {
                 anio: anioArchivo || anioDesdeFecha(fecha),
                 semana: String(val(row, ['SEMANA', 'Semana'])).trim(),
                 dia: fecha ? fecha.substring(0, 2) : '',
+                usuarioLolcli: normalizaUsuario(val(row, ['USUARIO LOLCLI', 'USUARIO', 'FACTURADOR', 'ASESOR', 'CONSEJERA', 'COLABORADOR'])),
                 fecha
             };
         }).filter(d => d.fecha && d.venta !== 0);
@@ -378,6 +420,22 @@ async function load() {
             };
         }).filter(d => d.fecha);
 
+        // NUEVO: carga opcional del archivo consejeras.csv
+        // Encabezados esperados: SEDE, COLABORADOR, ÁREA, USUARIO LOLCLI
+        try {
+            const textC = await fetchTextSmart(consejerasUrl);
+            const consejerasRows = parseCSV(textC);
+            consejerasData = consejerasRows.map(row => ({
+                sede: String(val(row, ['SEDE'])).trim().toUpperCase(),
+                colaborador: String(val(row, ['COLABORADOR'])).trim().toUpperCase(),
+                area: String(val(row, ['ÁREA', 'AREA'])).trim().toUpperCase(),
+                usuarioLolcli: normalizaUsuario(val(row, ['USUARIO LOLCLI', 'USUARIO']))
+            })).filter(c => c.usuarioLolcli || c.colaborador);
+        } catch(e) {
+            consejerasData = [];
+            console.warn('No se cargó consejeras.csv:', e.message);
+        }
+
         if (!rawData.length) {
             showError('El archivo ventas.csv cargó, pero no se encontraron ventas válidas. Revisa columnas: FECHA, FAC TOTAL, DNI/Paciente, CENTRO COSTO, SedeXX/SEDE o LINCE, MES, AÑOS, ASEGURADORA y SEMANA.');
         }
@@ -392,7 +450,7 @@ async function load() {
         fillCheckboxDropdown('dia', rawData.map(d => d.dia), 'DÍA (TODOS)');
 
         document.querySelectorAll('select').forEach(s => s.onchange = update);
-        showInfo(`Datos cargados: ${rawData.length.toLocaleString('es-PE')} registros de ventas y ${metasDiarias.length.toLocaleString('es-PE')} días de metas.`);
+        showInfo(`Datos cargados: ${rawData.length.toLocaleString('es-PE')} registros de ventas, ${metasDiarias.length.toLocaleString('es-PE')} días de metas y ${consejerasData.length.toLocaleString('es-PE')} consejeras.`);
         update();
     } catch (e) {
         console.error(e);
@@ -439,9 +497,17 @@ function update() {
         sedeNormalizada.includes('NORTE') ? 'metaNorte' :
         sedeNormalizada.includes('LINCE') ? 'metaLince' :
         'metaGlobal';
-    const metaAcumulada = filMParaGrafico.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
+    // CORRECCIÓN % ALCANCE REAL:
+    // La meta acumulada ahora se calcula SOLO con los días trabajados,
+    // es decir, únicamente fechas donde sí hubo venta.
+    const fechasTrabajadas = [...new Set(filV.map(v => v.fecha).filter(Boolean))];
+
+    const metaAcumulada = filMParaGrafico
+        .filter(m => fechasTrabajadas.includes(m.fecha))
+        .reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
+
     const metaMesCompleto = filM.reduce((acc, d) => acc + (d[metaCampo] || 0), 0);
-    const diasOp = [...new Set(filV.map(d => d.fecha))].length;
+    const diasOp = fechasTrabajadas.length;
     const pacUnicos = [...new Set(filV.map(d => d.pacienteKey).filter(Boolean))].length;
 
     document.getElementById('k1').innerText = money(tot);
@@ -459,6 +525,7 @@ function update() {
     renderCC(filV);
     renderAsignadora(filV);
     renderFunnel(filV);
+    renderConsejeras(filV);
 }
 function renderTendencia(ventas, metas, sedeSel, mesSel, anioSel, metaCampo) {
     let labels = [], dataReal = [], dataMeta = [];
@@ -648,6 +715,175 @@ function renderFunnel(fil) {
             }
         }
     });
+}
+
+
+function toggleConsejeras() {
+    const box = document.getElementById('boxConsejeras');
+    box.classList.toggle('show');
+    if (box.classList.contains('show')) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function renderConsejeras(fil) {
+    const cont = document.getElementById('tblConsejeras');
+    const contCCPac = document.getElementById('tblConsejerasCCPaciente');
+    const contCCMonto = document.getElementById('tblConsejerasCCMonto');
+    if (!cont) return;
+
+    if (!consejerasData.length) {
+        const msg = `<div class="alert" style="display:block;">No se encontró el archivo consejeras.csv. Debe estar junto a index.html, ventas.csv y metas.csv con estas columnas: SEDE, COLABORADOR, ÁREA, USUARIO LOLCLI.</div>`;
+        cont.innerHTML = msg;
+        if (contCCPac) contCCPac.innerHTML = msg;
+        if (contCCMonto) contCCMonto.innerHTML = msg;
+        return;
+    }
+
+    const mapaConsejeras = new Map();
+    consejerasData.forEach(c => {
+        if (c.usuarioLolcli) mapaConsejeras.set(c.usuarioLolcli, c);
+    });
+
+    const resumen = {};
+    const resumenCC = {};
+    const centrosCostoSet = new Set();
+
+    fil.forEach(v => {
+        const usuario = normalizaUsuario(v.usuarioLolcli);
+        const c = mapaConsejeras.get(usuario);
+        if (!c) return;
+
+        const sede = c.sede || v.sedeXX || 'SIN SEDE';
+        const colaborador = c.colaborador || c.usuarioLolcli;
+        const centroCosto = String(v.cc || 'OTROS').toUpperCase().trim() || 'OTROS';
+        centrosCostoSet.add(centroCosto);
+
+        const key = `${sede}||${colaborador}||${c.usuarioLolcli}`;
+        if (!resumen[key]) {
+            resumen[key] = {
+                sede,
+                colaborador,
+                usuarioLolcli: c.usuarioLolcli,
+                pacientes: new Set(),
+                venta: 0
+            };
+        }
+        if (v.pacienteKey) resumen[key].pacientes.add(v.pacienteKey);
+        resumen[key].venta += v.venta || 0;
+
+        // NUEVO FORMATO: filas por consejera/colaborador y columnas por CENTRO COSTO.
+        if (!resumenCC[key]) {
+            resumenCC[key] = {
+                sede,
+                colaborador,
+                usuarioLolcli: c.usuarioLolcli,
+                ccPacientes: {},
+                ccVenta: {}
+            };
+        }
+        if (!resumenCC[key].ccPacientes[centroCosto]) resumenCC[key].ccPacientes[centroCosto] = new Set();
+        if (v.pacienteKey) resumenCC[key].ccPacientes[centroCosto].add(v.pacienteKey);
+        resumenCC[key].ccVenta[centroCosto] = (resumenCC[key].ccVenta[centroCosto] || 0) + (v.venta || 0);
+    });
+
+    const data = Object.values(resumen).sort((a,b) => b.venta - a.venta);
+    const dataPivot = Object.values(resumenCC).sort((a,b) => {
+        const ventaB = Object.values(b.ccVenta).reduce((x,y)=>x+y,0);
+        const ventaA = Object.values(a.ccVenta).reduce((x,y)=>x+y,0);
+        if (ventaB !== ventaA) return ventaB - ventaA;
+        return String(a.colaborador).localeCompare(String(b.colaborador), 'es');
+    });
+
+    if (!data.length) {
+        const msg = `<div class="alert" style="display:block;">No hay coincidencias entre USUARIO LOLCLI de consejeras.csv y las ventas filtradas. Revisa que el usuario esté escrito igual en ambos archivos.</div>`;
+        cont.innerHTML = msg;
+        if (contCCPac) contCCPac.innerHTML = msg;
+        if (contCCMonto) contCCMonto.innerHTML = msg;
+        return;
+    }
+
+    const totalPac = new Set();
+    data.forEach(r => r.pacientes.forEach(p => totalPac.add(p)));
+    const totalVenta = data.reduce((a,r) => a + r.venta, 0);
+
+    let html = `<table class="consejeras-table">
+        <thead><tr><th>Colaborador</th><th>Sede</th><th>Usuario Lolcli</th><th>Pacientes únicos</th><th>FAC TOTAL</th></tr></thead><tbody>`;
+    data.forEach(r => {
+        html += `<tr>
+            <td>${escapeHtml(r.colaborador)}</td>
+            <td>${escapeHtml(r.sede)}</td>
+            <td>${escapeHtml(r.usuarioLolcli)}</td>
+            <td>${r.pacientes.size.toLocaleString('es-PE')}</td>
+            <td>${money(r.venta)}</td>
+        </tr>`;
+    });
+    html += `<tr class="consejeras-total"><td colspan="3">TOTAL</td><td>${totalPac.size.toLocaleString('es-PE')}</td><td>${money(totalVenta)}</td></tr>`;
+    html += `</tbody></table>`;
+    cont.innerHTML = html;
+
+    // Columnas dinámicas: se ordenan por mayor monto total para que las más importantes salgan primero.
+    const centrosCosto = [...centrosCostoSet].sort((a,b) => {
+        const totalB = dataPivot.reduce((acc,r)=>acc + (r.ccVenta[b] || 0), 0);
+        const totalA = dataPivot.reduce((acc,r)=>acc + (r.ccVenta[a] || 0), 0);
+        if (totalB !== totalA) return totalB - totalA;
+        return String(a).localeCompare(String(b), 'es');
+    });
+
+    if (contCCPac) {
+        let htmlPac = `<table class="consejeras-table">
+            <thead><tr><th>COLABORADOR</th>`;
+        centrosCosto.forEach(cc => htmlPac += `<th>${escapeHtml(cc)}</th>`);
+        htmlPac += `<th>TOTAL</th></tr></thead><tbody>`;
+
+        dataPivot.forEach(r => {
+            let totalFila = 0;
+            htmlPac += `<tr><td>${escapeHtml(r.colaborador)}</td>`;
+            centrosCosto.forEach(cc => {
+                const valor = r.ccPacientes[cc] ? r.ccPacientes[cc].size : 0;
+                totalFila += valor;
+                htmlPac += `<td style="text-align:right;">${valor ? valor.toLocaleString('es-PE') : ''}</td>`;
+            });
+            htmlPac += `<td style="text-align:right; font-weight:900;">${totalFila.toLocaleString('es-PE')}</td></tr>`;
+        });
+
+        htmlPac += `<tr class="consejeras-total"><td>TOTAL</td>`;
+        let totalGeneralPac = 0;
+        centrosCosto.forEach(cc => {
+            const totalCol = dataPivot.reduce((acc,r)=>acc + (r.ccPacientes[cc] ? r.ccPacientes[cc].size : 0), 0);
+            totalGeneralPac += totalCol;
+            htmlPac += `<td style="text-align:right;">${totalCol ? totalCol.toLocaleString('es-PE') : ''}</td>`;
+        });
+        htmlPac += `<td style="text-align:right;">${totalGeneralPac.toLocaleString('es-PE')}</td></tr>`;
+        htmlPac += `</tbody></table>`;
+        contCCPac.innerHTML = htmlPac;
+    }
+
+    if (contCCMonto) {
+        let htmlMonto = `<table class="consejeras-table">
+            <thead><tr><th>COLABORADOR</th>`;
+        centrosCosto.forEach(cc => htmlMonto += `<th>${escapeHtml(cc)}</th>`);
+        htmlMonto += `<th>TOTAL</th></tr></thead><tbody>`;
+
+        dataPivot.forEach(r => {
+            let totalFila = 0;
+            htmlMonto += `<tr><td>${escapeHtml(r.colaborador)}</td>`;
+            centrosCosto.forEach(cc => {
+                const valor = r.ccVenta[cc] || 0;
+                totalFila += valor;
+                htmlMonto += `<td style="text-align:right;">${valor ? money(valor) : ''}</td>`;
+            });
+            htmlMonto += `<td style="text-align:right; font-weight:900;">${money(totalFila)}</td></tr>`;
+        });
+
+        htmlMonto += `<tr class="consejeras-total"><td>TOTAL</td>`;
+        let totalGeneralMonto = 0;
+        centrosCosto.forEach(cc => {
+            const totalCol = dataPivot.reduce((acc,r)=>acc + (r.ccVenta[cc] || 0), 0);
+            totalGeneralMonto += totalCol;
+            htmlMonto += `<td style="text-align:right;">${totalCol ? money(totalCol) : ''}</td>`;
+        });
+        htmlMonto += `<td style="text-align:right;">${money(totalGeneralMonto)}</td></tr>`;
+        htmlMonto += `</tbody></table>`;
+        contCCMonto.innerHTML = htmlMonto;
+    }
 }
 
 load();

@@ -530,23 +530,31 @@ function update() {
 function renderTendencia(ventas, metas, sedeSel, mesSel, anioSel, metaCampo) {
     let labels = [], dataReal = [], dataMeta = [];
     const titulo = document.getElementById('titleEvo');
+
     if (mesSel === 'TODOS') {
-        const ultima = maxFechaVentas(ventas);
-        titulo.innerText = ultima ? `Comparativo Total Acumulado hasta ${ultima}` : 'Comparativo Total Acumulado';
+        const ultimaVenta = maxFechaVentas(ventas);
+        titulo.innerText = ultimaVenta ? `Comparativo Total Acumulado hasta ${ultimaVenta}` : 'Comparativo Total Acumulado';
         labels = ['ACUMULADO'];
         dataReal = [ventas.reduce((acc, d) => acc + d.venta, 0)];
-        dataMeta = [metas.reduce((acc, d) => acc + (d[metaCampo] || 0), 0)];
+
+        // La meta acumulada también se calcula solo con días trabajados.
+        const fechasTrabajadas = [...new Set(ventas.map(v => v.fecha).filter(Boolean))];
+        dataMeta = [metas
+            .filter(m => fechasTrabajadas.includes(m.fecha))
+            .reduce((acc, d) => acc + (d[metaCampo] || 0), 0)
+        ];
     } else {
-        // CAMBIO SOLICITADO:
-        // En el gráfico diario solo se muestran los días trabajados,
-        // es decir, días donde sí hubo venta. Ya no se dibujan todos los días del mes.
-        const fechasTrabajadas = [...new Set(ventas.map(v => v.fecha).filter(Boolean))]
+        // CORRECCIÓN FINAL:
+        // El gráfico diario muestra SOLO los días trabajados, es decir,
+        // fechas donde hubo ventas filtradas. Si se sube nueva venta del 10/05,
+        // recién ahí aparecerá 10/05 en el gráfico.
+        const fechasGrafico = [...new Set(ventas.map(v => v.fecha).filter(Boolean))]
             .sort((a,b) => compareFechaNum(a).localeCompare(compareFechaNum(b)));
 
-        const ultimaVenta = fechasTrabajadas.length ? fechasTrabajadas[fechasTrabajadas.length - 1] : '';
-        titulo.innerText = ultimaVenta ? `Detalle Diario: ${mesSel} - días trabajados hasta ${ultimaVenta}` : `Detalle Diario: ${mesSel}`;
+        const ultimaFechaTrabajada = fechasGrafico.length ? fechasGrafico[fechasGrafico.length - 1] : '';
+        titulo.innerText = ultimaFechaTrabajada ? `Detalle Diario: ${mesSel} - días trabajados hasta ${ultimaFechaTrabajada}` : `Detalle Diario: ${mesSel}`;
 
-        fechasTrabajadas.forEach(fecha => {
+        fechasGrafico.forEach(fecha => {
             const ventaDia = ventas.filter(v => v.fecha === fecha).reduce((acc, v) => acc + v.venta, 0);
             const metaDia = metas.find(m => m.fecha === fecha);
             labels.push(fecha.substring(0, 5));
@@ -554,13 +562,32 @@ function renderTendencia(ventas, metas, sedeSel, mesSel, anioSel, metaCampo) {
             dataMeta.push(metaDia ? (metaDia[metaCampo] || 0) : 0);
         });
     }
+
     makeChart('chMix', {
         type: 'bar',
         data: { labels, datasets: [
             { label: 'Obtenido', data: dataReal, backgroundColor: '#10b981', borderRadius: 5 },
             { label: 'Meta', data: dataMeta, backgroundColor: '#e2e8f0', borderRadius: 5 }
         ]},
-        options: { maintainAspectRatio:false, plugins:{ datalabels:{ display:true, anchor:'end', align:'top', formatter:v=>v>0?money(v):'', font:{weight:'bold', size:12} } }, scales:{ y:{ beginAtZero:true, ticks:{ callback:v=>money(v) }, suggestedMax: Math.max(1, ...dataReal, ...dataMeta) * 1.15 } } }
+        options: {
+            maintainAspectRatio:false,
+            plugins:{
+                datalabels:{
+                    display:true,
+                    anchor:'end',
+                    align:'top',
+                    formatter:v=>v>0?money(v):'',
+                    font:{weight:'bold', size:12}
+                }
+            },
+            scales:{
+                y:{
+                    beginAtZero:true,
+                    ticks:{ callback:v=>money(v) },
+                    suggestedMax: Math.max(1, ...dataReal, ...dataMeta) * 1.15
+                }
+            }
+        }
     });
 }
 function makeChart(id, config) {

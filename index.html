@@ -33,7 +33,7 @@
         .kpi-card { background: var(--white); padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center; }
         .kpi-card span { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; display: block; min-height: 30px; }
         .kpi-card div { font-size: 22px; font-weight: 900; margin-top: 4px; color: var(--primary); }
-        .reach-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 15px 0; }
+        .reach-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 15px 0; }
         .reach-card { background: var(--white); padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center; }
         .reach-card.highlight { border-color: var(--accent); background: #fffcf5; }
         .reach-card span { font-weight: 800; color: #64748b; font-size: 13px; text-transform: uppercase; }
@@ -102,7 +102,8 @@
     <div class="reach-grid">
         <div class="reach-card"><span>% Alcance Real (Avance a la Fecha)</span><div id="pAlcanceReal">0%</div></div>
         <div class="reach-card"><span>% Alcance Total (Cierre de Mes)</span><div id="pAlcanceTotal">0%</div></div>
-        <div class="reach-card highlight"><span>Proyección Estimada al Cierre</span><div id="vProyeccion">S/ 0</div></div>
+        <div class="reach-card"><span>META TOTAL</span><div id="metaTotal">S/ 0</div></div>
+        <div class="reach-card highlight"><span>Objetivo Restante</span><div id="vProyeccion">S/ 0</div></div>
     </div>
 
     <div class="section-title" id="titleEvo">Evolución Comercial: Real vs Meta</div>
@@ -450,7 +451,7 @@ async function load() {
         fillCheckboxDropdown('dia', rawData.map(d => d.dia), 'DÍA (TODOS)');
 
         document.querySelectorAll('select').forEach(s => s.onchange = update);
-        showInfo(`Datos cargados: ${rawData.length.toLocaleString('es-PE')} registros de ventas, ${metasDiarias.length.toLocaleString('es-PE')} días de metas y ${consejerasData.length.toLocaleString('es-PE')} consejeras.`);
+        showInfo('');
         update();
     } catch (e) {
         console.error(e);
@@ -518,7 +519,8 @@ function update() {
 
     document.getElementById('pAlcanceReal').innerText = (metaAcumulada > 0 ? (tot / metaAcumulada) * 100 : 0).toFixed(1) + '%';
     document.getElementById('pAlcanceTotal').innerText = (metaMesCompleto > 0 ? (tot / metaMesCompleto) * 100 : 0).toFixed(1) + '%';
-    document.getElementById('vProyeccion').innerText = money((diasOp > 0 ? tot / diasOp : 0) * (filM.length || 30));
+    document.getElementById('metaTotal').innerText = money(metaMesCompleto);
+    document.getElementById('vProyeccion').innerText = money(Math.max(0, metaMesCompleto - tot));
 
     renderTendencia(filV, filMParaGrafico, s, m, a, metaCampo);
     renderSedes(filV, s);

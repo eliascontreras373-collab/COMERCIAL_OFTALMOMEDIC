@@ -149,7 +149,7 @@
 
 <script>
 Chart.register(ChartDataLabels);
-let rawData = [], metasDiarias = [], consejerasData = [], charts = {};
+let rawData = [], metasDiarias = [], metasCosto = [], consejerasData = [], charts = {};
 const MESES = {"ENERO":"01","FEBRERO":"02","MARZO":"03","ABRIL":"04","MAYO":"05","JUNIO":"06","JULIO":"07","AGOSTO":"08","SETIEMBRE":"09","SEPTIEMBRE":"09","OCTUBRE":"10","NOVIEMBRE":"11","DICIEMBRE":"12"};
 const MESES_NOMBRE = {"01":"Enero","02":"Febrero","03":"Marzo","04":"Abril","05":"Mayo","06":"Junio","07":"Julio","08":"Agosto","09":"Septiembre","10":"Octubre","11":"Noviembre","12":"Diciembre"};
 const palette = ['#064e3b', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
@@ -191,6 +191,18 @@ function normKey(k) {
         .replace(/^\uFEFF/, '')
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .trim().toUpperCase();
+}
+function normCentroCosto(txt) {
+    return String(txt || '')
+        .toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/L\s*\.\s*N\s*\./g, 'LN')
+        .replace(/L\s*N\s*\./g, 'LN')
+        .replace(/\./g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace('LN CONSULTAS', 'LN CONSULTA')
+        .replace('LN PROCEDIMIENTOS', 'LN PROCEDIMIENTO');
 }
 function val(row, names) {
     for (const n of names) {
@@ -340,6 +352,7 @@ async function load() {
         const baseUrl = new URL('./', window.location.href);
         const ventasUrl = new URL('ventas.csv', baseUrl).href + vParam;
         const metasUrl = new URL('metas.csv', baseUrl).href + vParam;
+        const metasCostoUrl = new URL('metas_costo.csv', baseUrl).href + vParam;
         const consejerasUrl = new URL('consejeras.csv', baseUrl).href + vParam;
 
         const textV = await fetchTextSmart(ventasUrl);
@@ -361,7 +374,7 @@ async function load() {
                         .replace(/\s+/g, ' ')
                         .trim()
                 ),
-                cc: (String(val(row, ['CENTRO COSTO', 'CENTRO DE COSTO', 'CC'])).trim() || 'OTROS').toUpperCase(),
+                cc: normCentroCosto(String(val(row, ['CENTRO COSTO', 'CENTRO DE COSTO', 'CC'])).trim() || 'OTROS'),
                 // Usa primero la columna ASEGURADORA; si no existe, usa DES PLAN como respaldo.
                 aseguradora: (String(val(row, ['ASEGURADORA', 'DES PLAN', 'CONTRATANTE', 'TIPO PAGO'])).trim() || 'PARTICULAR').toUpperCase(),
                 sedeXX: (() => {
@@ -421,6 +434,23 @@ async function load() {
             };
         }).filter(d => d.fecha);
 
+        // NUEVO: carga opcional del archivo metas_costo.csv
+        // Encabezados esperados: AÑO, MES, SEDE, CENTRO_COSTO, META
+        try {
+            const textMC = await fetchTextSmart(metasCostoUrl);
+            const metasCostoRows = parseCSV(textMC);
+            metasCosto = metasCostoRows.map(row => ({
+                anio: String(val(row, ['AÑO', 'ANIO', 'ANOS'])).trim(),
+                mes: String(val(row, ['MES'])).trim().toUpperCase(),
+                sede: String(val(row, ['SEDE'])).trim().toUpperCase(),
+                centro: normCentroCosto(val(row, ['CENTRO_COSTO', 'CENTRO COSTO', 'CENTRO DE COSTO', 'CC'])),
+                meta: cleanNum(val(row, ['META', 'META_MES', 'Meta']))
+            })).filter(d => d.anio && d.mes && d.sede && d.centro);
+        } catch(e) {
+            metasCosto = [];
+            console.warn('No se cargó metas_costo.csv:', e.message);
+        }
+
         // NUEVO: carga opcional del archivo consejeras.csv
         // Encabezados esperados: SEDE, COLABORADOR, ÁREA, USUARIO LOLCLI
         try {
@@ -442,6 +472,9 @@ async function load() {
         }
         if (!metasDiarias.length) {
             showError('El archivo metas.csv cargó, pero no se encontraron metas válidas. Revisa columnas: Fecha, Meta, CENTRO, NORTE y LINCE si usarás la nueva sede.');
+        }
+        if (!metasCosto.length) {
+            console.warn('metas_costo.csv no cargó o está vacío. El comparativo por Centro de Costo mostrará meta en 0.');
         }
 
         fillSelect('fSede', rawData.map(d => d.sedeXX));
@@ -613,16 +646,106 @@ function topLabelsByValue(obj, limit=12) {
 }
 function renderCC(fil) {
     let venta = {}, pac = {};
+
     fil.forEach(d => {
-        const k = d.cc || 'OTROS';
+        const k = normCentroCosto(d.cc || 'OTROS');
         venta[k] = (venta[k] || 0) + d.venta;
         if (!pac[k]) pac[k] = new Set();
         if (d.pacienteKey) pac[k].add(d.pacienteKey);
     });
-    const ccs = topLabelsByValue(venta, 12);
-    createBar('chCCV', ccs, ccs.map(c => venta[c] || 0), true, 22, palette);
-    createBar('chCCP', ccs, ccs.map(c => pac[c] ? pac[c].size : 0), false, 22, palette);
+
+    const anioSel = String(document.getElementById('fAnio').value || 'TODOS').trim();
+    const mesSel = String(document.getElementById('fMes').value || 'TODOS').trim().toUpperCase();
+    const sedeSel = String(document.getElementById('fSede').value || 'TODOS')
+        .toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .trim();
+
+    let meta = {};
+    metasCosto
+        .filter(x =>
+            (anioSel === 'TODOS' || x.anio === anioSel) &&
+            (mesSel === 'TODOS' || x.mes === mesSel) &&
+            (sedeSel === 'TODOS' || x.sede === sedeSel)
+        )
+        .forEach(x => {
+            const k = normCentroCosto(x.centro);
+            meta[k] = (meta[k] || 0) + (x.meta || 0);
+        });
+
+    // Incluye centros con venta y también centros que solo tienen meta.
+    const allLabels = [...new Set([...Object.keys(venta), ...Object.keys(meta)])]
+        .filter(Boolean)
+        .sort((a,b) => (venta[b] || 0) - (venta[a] || 0));
+
+    const labels = allLabels.slice(0, 12);
+    const realData = labels.map(l => venta[l] || 0);
+    const metaData = labels.map(l => meta[l] || 0);
+
+    // GRÁFICO 1: Centro de costo con Real vs Meta + % cumplimiento en la misma barra.
+    makeChart('chCCV', {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Real', data: realData, backgroundColor: '#10b981', borderRadius: 8, barThickness: 18 },
+                { label: 'Meta', data: metaData, backgroundColor: '#cbd5e1', borderRadius: 8, barThickness: 18 }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            maintainAspectRatio: false,
+            layout: { padding: { right: 210 } },
+            plugins: {
+                legend: { display: true, position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            const i = ctx.dataIndex;
+                            const real = realData[i] || 0;
+                            const metaMes = metaData[i] || 0;
+                            const pct = metaMes > 0 ? ((real / metaMes) * 100).toFixed(1) : '0.0';
+                            const falta = Math.max(0, metaMes - real);
+                            if (ctx.dataset.label === 'Real') return `Real: ${money(real)} | Cumplimiento: ${pct}%`;
+                            return `Meta: ${money(metaMes)} | Falta: ${money(falta)}`;
+                        }
+                    }
+                },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'right',
+                    formatter: function(v, ctx) {
+                        if (v <= 0) return '';
+                        const i = ctx.dataIndex;
+                        const real = realData[i] || 0;
+                        const metaMes = metaData[i] || 0;
+                        const pct = metaMes > 0 ? ((real / metaMes) * 100).toFixed(1) : '0.0';
+                        if (ctx.dataset.label === 'Real') return `${money(real)} | ${pct}%`;
+                        return money(metaMes);
+                    },
+                    font: { weight: '900', size: 12 },
+                    color: '#0f172a'
+                }
+            },
+            scales: {
+                x: {
+                    display: false,
+                    beginAtZero: true,
+                    grid: { display: false }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { font: { weight: 'bold', size: 12 }, color: '#064e3b' }
+                }
+            }
+        }
+    });
+
+    // GRÁFICO 2: Pacientes únicos por centro de costo, como estaba antes.
+    const ccsPacientes = Object.keys(venta).sort((a,b) => venta[b] - venta[a]).slice(0, 12);
+    createBar('chCCP', ccsPacientes, ccsPacientes.map(c => pac[c] ? pac[c].size : 0), false, 22, palette);
 }
+
 function renderAsignadora(fil) {
     const nombresCortos = {
         'PROMOFARMA S A': 'PROMOFARMA',

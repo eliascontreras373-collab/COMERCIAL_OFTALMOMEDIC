@@ -48,11 +48,12 @@
         .btn-final:hover { filter: brightness(1.08); }
         .consejeras-box { display:none; background:var(--white); padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px; overflow-x:auto; }
         .consejeras-box.show { display:block; }
-        .consejeras-table { width:100%; border-collapse:collapse; font-size:13px; }
-        .consejeras-table th { background:var(--primary); color:white; text-align:left; padding:10px; text-transform:uppercase; font-size:12px; }
-        .consejeras-table td { padding:10px; border-bottom:1px solid #e2e8f0; font-weight:700; }
+        .consejeras-table { width:100%; border-collapse:collapse; font-size:13px; table-layout:auto; }
+        .consejeras-table th { background:var(--primary); color:white; text-align:center; padding:12px 10px; text-transform:uppercase; font-size:12px; vertical-align:middle; white-space:nowrap; }
+        .consejeras-table td { padding:11px 10px; border-bottom:1px solid #e2e8f0; font-weight:700; text-align:center; vertical-align:middle; }
+        .consejeras-table td:first-child, .consejeras-table th:first-child { text-align:center; }
         .consejeras-table tr:hover { background:#f8fafc; }
-        .consejeras-total { background:#fffcf5; font-weight:900; color:var(--primary); }
+        .consejeras-total { background:#fffcf5; font-weight:900; color:var(--primary); text-align:center; }
         .consejeras-subtitle { font-size:14px; font-weight:900; color:var(--primary); text-transform:uppercase; margin:18px 0 10px 0; border-bottom:1px solid #cbd5e1; padding-bottom:6px; }
         .consejeras-grid { display:grid; grid-template-columns:1fr; gap:15px; margin-top:15px; }
         .consejeras-mini-box { background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px; overflow-x:auto; }
@@ -67,6 +68,15 @@
             <div class="filter-box"><label>Sede</label><select id="fSede"><option value="TODOS">SEDE (TODAS)</option></select></div>
             <div class="filter-box"><label>Año</label><select id="fAnio"><option value="TODOS">AÑO</option></select></div>
             <div class="filter-box"><label>Mes</label><select id="fMes"><option value="TODOS">MES (TODOS)</option></select></div>
+            <div class="filter-box"><label>Aseguradora</label>
+                <div class="multi-dropdown" id="ddAseguradora">
+                    <button type="button" class="multi-btn" onclick="toggleDropdown('ddAseguradora')"><span id="lblAseguradora">ASEGURADORA (TODAS)</span><span>▾</span></button>
+                    <div class="multi-panel">
+                        <label class="check-row all-row"><input type="checkbox" id="chkAseguradoraTodos" checked onchange="toggleAllCheckboxes('aseguradora', this.checked)"> Todas las aseguradoras</label>
+                        <div id="boxAseguradora"></div>
+                    </div>
+                </div>
+            </div>
             <div class="filter-box"><label>Semana</label>
                 <div class="multi-dropdown" id="ddSemana">
                     <button type="button" class="multi-btn" onclick="toggleDropdown('ddSemana')"><span id="lblSemana">SEMANA (TODAS)</span><span>▾</span></button>
@@ -289,9 +299,36 @@ function fillSelect(id, vals) {
 function escapeHtml(txt) {
     return String(txt).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 }
+function getDropdownConfig(tipo) {
+    const cfg = {
+        semana: {
+            box: 'boxSemana',
+            todos: 'chkSemanaTodos',
+            lbl: 'lblSemana',
+            base: 'SEMANA (TODAS)'
+        },
+        dia: {
+            box: 'boxDia',
+            todos: 'chkDiaTodos',
+            lbl: 'lblDia',
+            base: 'DÍA (TODOS)'
+        },
+        aseguradora: {
+            box: 'boxAseguradora',
+            todos: 'chkAseguradoraTodos',
+            lbl: 'lblAseguradora',
+            base: 'ASEGURADORA (TODAS)'
+        }
+    };
+    return cfg[tipo];
+}
 function fillCheckboxDropdown(tipo, vals, labelAll) {
-    const box = document.getElementById(tipo === 'semana' ? 'boxSemana' : 'boxDia');
-    const todos = document.getElementById(tipo === 'semana' ? 'chkSemanaTodos' : 'chkDiaTodos');
+    const cfg = getDropdownConfig(tipo);
+    if (!cfg) return;
+    const box = document.getElementById(cfg.box);
+    const todos = document.getElementById(cfg.todos);
+    if (!box || !todos) return;
+
     box.innerHTML = '';
     todos.checked = true;
     const cleanVals = [...new Set(vals)]
@@ -317,8 +354,10 @@ function toggleAllCheckboxes(tipo, checked) {
 }
 function onOptionCheck(tipo) {
     const checked = getCheckedValues(tipo);
-    const todos = document.getElementById(tipo === 'semana' ? 'chkSemanaTodos' : 'chkDiaTodos');
-    todos.checked = checked.length === 0;
+    const cfg = getDropdownConfig(tipo);
+    if (!cfg) return;
+    const todos = document.getElementById(cfg.todos);
+    if (todos) todos.checked = checked.length === 0;
     updateDropdownLabel(tipo);
     update();
 }
@@ -326,9 +365,12 @@ function getCheckedValues(tipo) {
     return [...document.querySelectorAll(`.chk-${tipo}:checked`)].map(chk => chk.value);
 }
 function updateDropdownLabel(tipo, defaultLabel) {
+    const cfg = getDropdownConfig(tipo);
+    if (!cfg) return;
     const vals = getCheckedValues(tipo);
-    const lbl = document.getElementById(tipo === 'semana' ? 'lblSemana' : 'lblDia');
-    const base = defaultLabel || (tipo === 'semana' ? 'SEMANA (TODAS)' : 'DÍA (TODOS)');
+    const lbl = document.getElementById(cfg.lbl);
+    if (!lbl) return;
+    const base = defaultLabel || cfg.base;
     if (vals.length === 0) lbl.innerText = base;
     else if (vals.length === 1) lbl.innerText = vals[0];
     else lbl.innerText = `${vals.length} seleccionados`;
@@ -366,6 +408,13 @@ async function load() {
                 venta: cleanNum(val(row, ['FAC TOTAL', 'FACT TOTAL', 'TOTAL', 'VENTA', 'IMPORTE'])),
                 pacienteId: String(val(row, ['DNI', 'NUM HIST'])).trim(),
                 pacienteNombre: String(val(row, ['Paciente', 'PACIENTE'])).trim(),
+                // Llave única basada SOLO en la columna Paciente.
+                // Se usa para Análisis por Centro de Costo y CONSEJERAS CC (PACIENTE).
+                pacienteNombreKey: String(val(row, ['Paciente', 'PACIENTE']))
+                    .toUpperCase()
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim(),
                 pacienteKey: (
                     String(val(row, ['DNI', 'NUM HIST'])).trim() ||
                     String(val(row, ['Paciente', 'PACIENTE']))
@@ -414,6 +463,7 @@ async function load() {
                 semana: String(val(row, ['SEMANA', 'Semana'])).trim(),
                 dia: fecha ? fecha.substring(0, 2) : '',
                 usuarioLolcli: normalizaUsuario(val(row, ['USUARIO LOLCLI', 'USUARIO', 'FACTURADOR', 'ASESOR', 'CONSEJERA', 'COLABORADOR'])),
+                comprobante: String(val(row, ['COMPROBANTE', 'Comprobante', 'TIPO COMPROBANTE', 'TIPO_COMP'])).trim().toUpperCase(),
                 fecha
             };
         }).filter(d => d.fecha && d.venta !== 0);
@@ -480,6 +530,7 @@ async function load() {
         fillSelect('fSede', rawData.map(d => d.sedeXX));
         fillSelect('fAnio', rawData.map(d => d.anio));
         fillSelect('fMes', rawData.map(d => d.mes));
+        fillCheckboxDropdown('aseguradora', rawData.map(d => d.aseguradora), 'ASEGURADORA (TODAS)');
         fillCheckboxDropdown('semana', rawData.map(d => d.semana), 'SEMANA (TODAS)');
         fillCheckboxDropdown('dia', rawData.map(d => d.dia), 'DÍA (TODOS)');
 
@@ -496,6 +547,7 @@ function update() {
     const s = document.getElementById('fSede').value;
     const a = document.getElementById('fAnio').value;
     const m = document.getElementById('fMes').value;
+    const aseguradorasSel = getCheckedValues('aseguradora');
     const semanasSel = getCheckedValues('semana');
     const diasSel = getCheckedValues('dia');
 
@@ -503,6 +555,7 @@ function update() {
         (s === 'TODOS' || d.sedeXX === s || d.sedeXX.includes(s)) &&
         (a === 'TODOS' || d.anio === a) &&
         (m === 'TODOS' || d.mes === m) &&
+        (aseguradorasSel.length === 0 || aseguradorasSel.includes(d.aseguradora)) &&
         (semanasSel.length === 0 || semanasSel.includes(d.semana)) &&
         (diasSel.length === 0 || diasSel.includes(d.dia))
     );
@@ -544,10 +597,26 @@ function update() {
     const diasOp = fechasTrabajadas.length;
     const pacUnicos = [...new Set(filV.map(d => d.pacienteKey).filter(Boolean))].length;
 
+    // CORRECCIÓN TICKET PROMEDIO:
+    // Ahora usa EXACTAMENTE la misma lógica que los números de pacientes únicos
+    // por Centro de Costo: columna Paciente, agrupado por Centro de Costo.
+    // Fórmula: FACTURACIÓN TOTAL / SUMA de pacientes únicos por Centro de Costo.
+    let pacientesTicketPorCC = {};
+    filV.forEach(d => {
+        const cc = normCentroCosto(d.cc || 'OTROS');
+        if (!pacientesTicketPorCC[cc]) pacientesTicketPorCC[cc] = new Set();
+
+        const pacienteTicket = d.pacienteNombreKey || '';
+        if (pacienteTicket) pacientesTicketPorCC[cc].add(pacienteTicket);
+    });
+
+    const totalPacientesTicketPorCC = Object.values(pacientesTicketPorCC)
+        .reduce((acc, setPacientes) => acc + setPacientes.size, 0);
+
     document.getElementById('k1').innerText = money(tot);
     document.getElementById('k2').innerText = diasOp;
     document.getElementById('k3').innerText = pacUnicos;
-    document.getElementById('k4').innerText = money(tot / (pacUnicos || 1));
+    document.getElementById('k4').innerText = money(tot / (totalPacientesTicketPorCC || 1));
     document.getElementById('k5').innerText = money(metaAcumulada);
 
     document.getElementById('pAlcanceReal').innerText = (metaAcumulada > 0 ? (tot / metaAcumulada) * 100 : 0).toFixed(1) + '%';
@@ -651,7 +720,11 @@ function renderCC(fil) {
         const k = normCentroCosto(d.cc || 'OTROS');
         venta[k] = (venta[k] || 0) + d.venta;
         if (!pac[k]) pac[k] = new Set();
-        if (d.pacienteKey) pac[k].add(d.pacienteKey);
+
+        // CORRECCIÓN: en Análisis por Centro de Costo, los pacientes únicos
+        // se cuentan SOLO por la columna Paciente, no por DNI ni NUM HIST.
+        const pacienteCentroCosto = d.pacienteNombreKey || '';
+        if (pacienteCentroCosto) pac[k].add(pacienteCentroCosto);
     });
 
     const anioSel = String(document.getElementById('fAnio').value || 'TODOS').trim();
@@ -932,7 +1005,12 @@ function renderConsejeras(fil) {
             };
         }
         if (!resumenCC[key].ccPacientes[centroCosto]) resumenCC[key].ccPacientes[centroCosto] = new Set();
-        if (v.pacienteKey) resumenCC[key].ccPacientes[centroCosto].add(v.pacienteKey);
+
+        // CORRECCIÓN: en CONSEJERAS CC (PACIENTE), los pacientes únicos
+        // se cuentan SOLO por la columna Paciente, no por DNI ni NUM HIST.
+        const pacienteConsejeraCC = v.pacienteNombreKey || '';
+        if (pacienteConsejeraCC) resumenCC[key].ccPacientes[centroCosto].add(pacienteConsejeraCC);
+
         resumenCC[key].ccVenta[centroCosto] = (resumenCC[key].ccVenta[centroCosto] || 0) + (v.venta || 0);
     });
 
@@ -991,19 +1069,27 @@ function renderConsejeras(fil) {
             centrosCosto.forEach(cc => {
                 const valor = r.ccPacientes[cc] ? r.ccPacientes[cc].size : 0;
                 totalFila += valor;
-                htmlPac += `<td style="text-align:right;">${valor ? valor.toLocaleString('es-PE') : ''}</td>`;
+                htmlPac += `<td style="text-align:center;">${valor ? valor.toLocaleString('es-PE') : ''}</td>`;
             });
-            htmlPac += `<td style="text-align:right; font-weight:900;">${totalFila.toLocaleString('es-PE')}</td></tr>`;
+            htmlPac += `<td style="text-align:center; font-weight:900;">${totalFila.toLocaleString('es-PE')}</td></tr>`;
         });
 
         htmlPac += `<tr class="consejeras-total"><td>TOTAL</td>`;
-        let totalGeneralPac = 0;
+        const totalGeneralPacSet = new Set();
         centrosCosto.forEach(cc => {
-            const totalCol = dataPivot.reduce((acc,r)=>acc + (r.ccPacientes[cc] ? r.ccPacientes[cc].size : 0), 0);
-            totalGeneralPac += totalCol;
-            htmlPac += `<td style="text-align:right;">${totalCol ? totalCol.toLocaleString('es-PE') : ''}</td>`;
+            const totalColSet = new Set();
+            dataPivot.forEach(r => {
+                if (r.ccPacientes[cc]) {
+                    r.ccPacientes[cc].forEach(p => {
+                        totalColSet.add(p);
+                        totalGeneralPacSet.add(`${cc}||${p}`);
+                    });
+                }
+            });
+            const totalCol = totalColSet.size;
+            htmlPac += `<td style="text-align:center;">${totalCol ? totalCol.toLocaleString('es-PE') : ''}</td>`;
         });
-        htmlPac += `<td style="text-align:right;">${totalGeneralPac.toLocaleString('es-PE')}</td></tr>`;
+        htmlPac += `<td style="text-align:center;">${totalGeneralPacSet.size.toLocaleString('es-PE')}</td></tr>`;
         htmlPac += `</tbody></table>`;
         contCCPac.innerHTML = htmlPac;
     }
@@ -1020,9 +1106,9 @@ function renderConsejeras(fil) {
             centrosCosto.forEach(cc => {
                 const valor = r.ccVenta[cc] || 0;
                 totalFila += valor;
-                htmlMonto += `<td style="text-align:right;">${valor ? money(valor) : ''}</td>`;
+                htmlMonto += `<td style="text-align:center;">${valor ? money(valor) : ''}</td>`;
             });
-            htmlMonto += `<td style="text-align:right; font-weight:900;">${money(totalFila)}</td></tr>`;
+            htmlMonto += `<td style="text-align:center; font-weight:900;">${money(totalFila)}</td></tr>`;
         });
 
         htmlMonto += `<tr class="consejeras-total"><td>TOTAL</td>`;
@@ -1030,9 +1116,9 @@ function renderConsejeras(fil) {
         centrosCosto.forEach(cc => {
             const totalCol = dataPivot.reduce((acc,r)=>acc + (r.ccVenta[cc] || 0), 0);
             totalGeneralMonto += totalCol;
-            htmlMonto += `<td style="text-align:right;">${totalCol ? money(totalCol) : ''}</td>`;
+            htmlMonto += `<td style="text-align:center;">${totalCol ? money(totalCol) : ''}</td>`;
         });
-        htmlMonto += `<td style="text-align:right;">${money(totalGeneralMonto)}</td></tr>`;
+        htmlMonto += `<td style="text-align:center;">${money(totalGeneralMonto)}</td></tr>`;
         htmlMonto += `</tbody></table>`;
         contCCMonto.innerHTML = htmlMonto;
     }
